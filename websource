@@ -1,0 +1,160 @@
+
+:h2 S24 Clock
+
+:p
+b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment LED display)
+:
+
+:v q_kRyNXgdq0 (replace w/ video)
+:h3 Description
+:j s14_05.jpg s14_06.jpg
+This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display option. Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page. A countdown timer can also be activated via double tapping the button. Setup is done via a web interface that allow for 8 preset display formats / messages.
+:h3 Main Features
+:ul
+Web based WIFI setup, upon initial usage.
+Web based configuration, to preset up to 8 display formats or messages.
+Date time formats via strftime() c library standard.
+Ad-hoc message via web page posting.
+Synchronize date time via ntp.org time server.
+Various setting including autmatic cycling of messages, alternate numeric symbols, etc.
+Employs ESP32 S2 Mini, with open source code via github.
+:
+:h3 Technical Details
+:ul
+Employs Arduino ESP32 AutoConnect library for entering WIFI credentials.
+Full use of ESP32 S2 Mini IO pins to perform LED multiplexing.
+Access of IO registers directly and timer interrupts for efficient multiplexing.
+:
+:h3 Initial Setup
+The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. 
+Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. 
+:j s14_23.jpg
+:
+Use your phone or computer and locate the AP with SSID "esp32ap", connect with password "12345678".
+Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.
+Enter your home network WIFI credentials and hit "Apply" button.
+:j240 ap01.png ap02.png ap03.png
+:
+Your S14Clock should connect to your home network and will start to work after showing it's IP address briefly. You may need to reset the S14Clock via the bottom hardware reset button.
+:
+:h3 Application Notes
+Upon power up the S14Clock will show it's IP address briefly. The S14Clock runs a web server for configuration and cusomization. Enter the IP address via a browser to access the appliation server.
+:p
+The four b(primary buttons) at the top of the page serves the following purposes;
+:
+:ul
+b(Count Down) turns the display into a countdown timer, additional press on this button advances the countdown time.
+b(Advance Display) cycle to the next display format, as setup via "Display Content" entries.
+b(Reset Configuration) resets S14Clock to preset default configuration values.
+b(Reset WIFI) forget current WIFI credentials, next power up will require WIFI setup again.
+:
+:j240 s14web_01a.png
+:p
+b(Ad-hoc messages) can be entered and send to the S14Clock display. If entered text is prefixed with ~x or ~X, message will expire in 10 or 60 seconds and clock will return to previous display content.
+:p
+Eight sets of b(display contents) (left plus right aligned text and tokens) can be configured, along with checkboxes to turn them on and off. The "on" contents will be cycled through the cycle / advance display button.
+:
+:j240 s14web_02.png
+:p
+A separated b(countdown content display) set is used specifically for countdown function.
+Tokens are used to substitute current date time elements and also font used. Their usage can be found in the "Format Control" section below.
+The rest of the configuration parameters are self explainary. Countdown Increments, Transit Effects, Cycle Seconds (0 for no content cycling), Brightness, Rotate (when display is turn upside down), All Caps, Auresh (special font) and Time Zone.
+:p
+The b(Format Control) section explains how tokens can be used to display various date time elements, plus other special features in S14Clock, builtin features are in the format of tilde + code (ex. ~W), strtime() tokens in the format of percent + code (ex. %H), strtime() is a C language function for date time formatting.
+:
+:h3 Components and Assembly
+:j s14clk_parts.jpg
+
+:ul
+1× ESP32 S2 Mini module
+1x 74HC154D 4-16 line decoder (not needed for S14-12)
+4x 3692AS common cathode 14 segments 6 digits LED module (2x for S14-12)
+2x 8x2 male header
+2x 8x2 female header
+:
+
+Component placement follows printed circuit board footprints. As all components are symmetrical, please observe orientation when placing. Apart from that te soldering process is straightforward.
+
+:h3 Schematic and Source Code
+:pre
+:code
+           (S14-12 Clock)
+           ESP32 S2 MINI
+         -----------------                             2x 3692AS LED Displays
+        |                 |                  _____________________________________
+        |           row 0 |---------------->|D1  ___                         ___  |
+        |           row 1 |---------------->|D2 |\|/|    _________________  |\|/| |
+        |           row 2 |---------------->|D3  - -   ___________________   - -  |
+        |           row 3 |---------------->|D4 |/|\|                       |/|\| |
+        |           row 4 |---------------->|D5  ---                         ---  |
+        |           row 5 |---------------->|D6  A B C D E F 1 2 H J K L M N dp   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                  ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |           row 6 |---------------->|D1     ___ a                         |
+        |           row 7 |---------------->|D2   f|\|/|b (hjk)                   |
+        |           row 8 |---------------->|D3     - - g G                       |
+        |           row 9 |---------------->|D4   e|/|\|c (nml)                   |
+        |           row 10|---------------->|D5     === d                         |
+        |           row 11|---------------->|D6                                   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                      | | |                     | |
+        |           com 0 |----------------------+ | |                     | |
+        |           com 1 |------------------------+ |  /................/ | |
+        |           com 2 |--------------------------+                     | |
+        |           .   ..| ....     similar to all common lines     ..../ | |
+        |           .   ..|    ....                                        | |
+        |           com 14|------------------------------------------------+ |
+        |           com 15|--------------------------------------------------+
+        |                 |             
+        +-----------------+  * actual io pin to row / col map depends on PCB version
+
+
+           (S14-24 Clock)
+           ESP32 S2 MINI
+         -----------------                             4x 3692AS LED Displays
+        |                 |                  _____________________________________
+        |           row 0 |---------------->|D1  ___                         ___  |
+        |           row 1 |---------------->|D2 |\|/|    _________________  |\|/| |
+        |           row 2 |---------------->|D3  - -   ___________________   - -  |
+        |           row 3 |---------------->|D4 |/|\|                       |/|\| |
+        |           row 4 |---------------->|D5  ---                         ---  |
+        |           row 5 |---------------->|D6  A B C D E F 1 2 H J K L M N dp   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                  ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |           row 6 |---------------->|D1                                   |
+        |           row 7 |---------------->|D2                                   |
+        |                 |    +--- Y0|---->|D3                                   |
+        |                 |    |    Y1|---->|D4                                   |
+        |                 |    |    Y2|---->|D5                                   |
+        |            3.3V |----|VCC Y3|---->|D6                                   |
+        |              __ |    |      |      ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |              EN |--->|EN0   |      ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |                 |    |    Y4|---->|D1                                   |
+        |       address 0 |--->|    Y5|---->|D2                                   |
+        |       address 1 |--->|    Y6|---->|D3                                   |
+        |       address 2 |--->|    Y7|---->|D4                                   |
+        |       address 3 |--->|    Y8|---->|D5                                   |
+        |                 |    |    Y9|---->|D6                                   |
+        |                 | +--|EN1   |      ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |             GND |-+--|GND   |      ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |                 |    |   Y10|---->|D1                                   |
+        |                 |    |   Y11|---->|D2                                   |
+        |                 |    |   Y12|---->|D3                                   |
+        |                 |    |   Y13|---->|D4                                   |
+        |                 |    |   Y14|---->|D5                                   |
+        |                 |    |   Y15|---->|D6                                   |
+        |                 |    +------+      ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |    74HC154D          | | |                     | |
+        |                 |                      | | |                     | N.C
+        |           com 0 |----------------------+ | |                     |  
+        |           com 1 |------------------------+ |  /................/ |  
+        |           com 2 |--------------------------+                     |  
+        |           .   ..| ....     similar to all common lines     ..../ |  
+        |           .   ..|    ....                                        |  
+        |           com 14|------------------------------------------------+  
+        |                 |             
+        +-----------------+  * actual io pin to row / col map depends on PCB version
+
+:
+This is an open source project. Source code can be found
+
