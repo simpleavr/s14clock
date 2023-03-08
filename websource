@@ -10,7 +10,7 @@ b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segm
 :h3 Description
 :
 This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.
-:j s14-12-24_00.jpg s14-24-12_01.jpg
+:j s14-12-24_00.JPG s14-24-12_01.JPG
 Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.
 A single tactile button is used to advance one of the eight present display formats / messages. The same button when pressn-hold allows cycling between various display transition effects.
 A countdown timer can also be activated via double tapping the button. Setup is done via a web interface that allow for 8 preset display formats / messages.
@@ -37,7 +37,7 @@ Access of IO registers directly and timer interrupts for efficient multiplexing.
 :h3 Initial Setup
 The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. 
 Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. 
-:j s14-24-12_04.jpg
+:j s14-24-12_04.JPG
 Use your phone or computer and locate the AP with SSID "esp32ap", connect with password "12345678".
 Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.
 Enter your home network WIFI credentials and hit "Apply" button.
@@ -46,7 +46,7 @@ Enter your home network WIFI credentials and hit "Apply" button.
 Your S14Clock should connect to your home network and will start to work after showing it's IP address briefly. You may need to reset the S14Clock via the bottom hardware reset button.
 :h3 Application Notes (Clock Unit)
 The S14Clock make use of the button on the ESP32 module for local functionalities, at the back of the clock unit, there are 2 buttons, the button marked 'RST' is a power reset button. The button marked '0' is the application button;
-:j s14_back.jpg
+:j s14_back.JPG
 :ul
 Single press advances (cycles) the 8 preset display format / messages.
 Press-n-hold advances the display transition effect, subsequent presses cycles to the next transition effect.
@@ -78,7 +78,7 @@ The rest of the configuration parameters are self explainary. Countdown Incremen
 The b(Format Control) section explains how tokens can be used to display various date time elements, plus other special features in S14Clock, builtin features are in the format of tilde + code (ex. ~W), strtime() tokens in the format of percent + code (ex. %H), strtime() is a C language function for date time formatting.
 :
 :h3 Components and Assembly
-:j s14clk_parts.jpg
+:j s14clk_parts.JPG
 
 :ul
 1× ESP32 S2 Mini module

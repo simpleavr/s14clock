@@ -13,7 +13,7 @@
 <br><br>
 <h3>Description</h3><br>
 <p>This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.</p>
-<br><img  border="2px solid #555" src="images/s14-12-24_00.jpg" width=""><img  border="2px solid #555" src="images/s14-24-12_01.jpg" width=""><br><br>
+<br><img  border="2px solid #555" src="images/s14-12-24_00.JPG"><img  border="2px solid #555" src="images/s14-24-12_01.JPG"><br><br>
 <p>Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.</p>
 <p>A single tactile button is used to advance one of the eight present display formats / messages. The same button when pressn-hold allows cycling between various display transition effects.</p>
 <p>A countdown timer can also be activated via double tapping the button. Setup is done via a web interface that allow for 8 preset display formats / messages.</p>
@@ -39,16 +39,16 @@
 <h3>Initial Setup</h3><br>
 <p>The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. </p>
 <p>Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. </p>
-<br><img  border="2px solid #555" src="images/s14-24-12_04.jpg" width=""><br><br>
+<br><img  border="2px solid #555" src="images/s14-24-12_04.JPG"><br><br>
 <p>Use your phone or computer and locate the AP with SSID "esp32ap", connect with password "12345678".</p>
 <p>Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.</p>
 <p>Enter your home network WIFI credentials and hit "Apply" button.</p>
-<br><img class="w240" border="2px solid #555" src="images/ap01.png" width="240"><img class="w240" border="2px solid #555" src="images/ap02.png" width="240"><img class="w240" border="2px solid #555" src="images/ap03.png" width="240"><br><br>
+<br><img class="w240" border="2px solid #555" src="images/ap01.png"><img class="w240" border="2px solid #555" src="images/ap02.png"><img class="w240" border="2px solid #555" src="images/ap03.png"><br><br>
 <br>
 <p>Your S14Clock should connect to your home network and will start to work after showing it's IP address briefly. You may need to reset the S14Clock via the bottom hardware reset button.</p>
 <h3>Application Notes (Clock Unit)</h3><br>
 <p>The S14Clock make use of the button on the ESP32 module for local functionalities, at the back of the clock unit, there are 2 buttons, the button marked 'RST' is a power reset button. The button marked '0' is the application button;</p>
-<br><img  border="2px solid #555" src="images/s14_back.jpg" width=""><br><br>
+<br><img  border="2px solid #555" src="images/s14_back.JPG"><br><br>
 <ul>
 <li>Single press advances (cycles) the 8 preset display format / messages.</li>
 <li>Press-n-hold advances the display transition effect, subsequent presses cycles to the next transition effect.</li>
@@ -65,14 +65,14 @@ The four <b>primary buttons</b> at the top of the page serves the following purp
 <li><b>Reset Configuration</b> resets S14Clock to preset default configuration values.</li>
 <li><b>Reset WIFI</b> forget current WIFI credentials, next power up will require WIFI setup again.</li>
 </ul>
-<br><img class="w240" border="2px solid #555" src="images/s14web_01a.png" width="240"><br><br>
+<br><img class="w240" border="2px solid #555" src="images/s14web_01a.png"><br><br>
 <p>
 <b>Ad-hoc messages</b> can be entered and send to the S14Clock display. If entered text is prefixed with ~x or ~X, message will expire in 10 or 60 seconds and clock will return to previous display content.
 <p>
 Eight sets of <b>display contents</b> (left plus right aligned text and tokens) can be configured, along with checkboxes to turn them on and off. The "on" contents will be cycled through the cycle / advance display button.
 </p>
 </p>
-<br><img class="w240" border="2px solid #555" src="images/s14web_02.png" width="240"><br><br>
+<br><img class="w240" border="2px solid #555" src="images/s14web_02.png"><br><br>
 <p>
 A separated <b>countdown content display</b> set is used specifically for countdown function.
 <p>Tokens are used to substitute current date time elements and also font used. Their usage can be found in the "Format Control" section below.</p>
@@ -82,7 +82,7 @@ The <b>Format Control</b> section explains how tokens can be used to display var
 </p>
 </p>
 <h3>Components and Assembly</h3><br>
-<br><img  border="2px solid #555" src="images/s14clk_parts.jpg" width=""><br><br>
+<br><img  border="2px solid #555" src="images/s14clk_parts.JPG"><br><br>
 <br>
 <ul>
 <li>1× ESP32 S2 Mini module</li>
