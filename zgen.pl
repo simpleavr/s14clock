@@ -34,6 +34,7 @@ my $skipped = 0;
 
 while (<I>) {
 	chomp;
+	/^#/ and next;
 	/^:v\s+(\w+)/ and do {
 		print <<_YOUTUBE;
 <iframe width="560" height="315" src="https://www.youtube.com/embed/$1" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
@@ -41,13 +42,13 @@ while (<I>) {
 _YOUTUBE
 		next;
 	};
-	/^:j(\d*)\s+([\w\.]+)\s?([\w\.]*)\s?([\w\.]*)/ and do {
+	/^:j(\d*)\s+([\w\-\.]+)\s?([\w\-\.]*)\s?([\w\-\.]*)/ and do {
 		#print "<br><img src=\"../../../Desktop/s14clock/images/$1\" width=\"320\">";
-		my ($width, $img1, $img2, $img3) = ($1, $2, $3, $4);
-		$width or $width = 400;
-		print "<br><img border=\"2px solid #555\" src=\"../../../Desktop/s14clock/$img1\" width=\"$width\">";
-		$img2 and print "<img border=\"2px solid #555\" src=\"../../../Desktop/s14clock/$img2\" width=\"$width\">";
-		$img3 and print "<img border=\"2px solid #555\" src=\"../../../Desktop/s14clock/$img3\" width=\"$width\">";
+		my ($width, $img1, $img2, $img3, $class) = ($1, $2, $3, $4, "");
+		$width and $class = "class=\"w$width\"";
+		print "<br><img $class border=\"2px solid #555\" src=\"images/$img1\" width=\"$width\">";
+		$img2 and print "<img $class border=\"2px solid #555\" src=\"images/$img2\" width=\"$width\">";
+		$img3 and print "<img $class border=\"2px solid #555\" src=\"images/$img3\" width=\"$width\">";
 		print "<br><br>\n";
 		next;
 	};

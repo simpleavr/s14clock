@@ -6,18 +6,27 @@ b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segm
 :
 
 :v q_kRyNXgdq0 (replace w/ video)
+
 :h3 Description
-:j s14_05.jpg s14_06.jpg
-This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display option. Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page. A countdown timer can also be activated via double tapping the button. Setup is done via a web interface that allow for 8 preset display formats / messages.
+:
+This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.
+:j s14-12-24_00.jpg s14-24-12_01.jpg
+Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.
+A single tactile button is used to advance one of the eight present display formats / messages. The same button when pressn-hold allows cycling between various display transition effects.
+A countdown timer can also be activated via double tapping the button. Setup is done via a web interface that allow for 8 preset display formats / messages.
+
 :h3 Main Features
+:
 :ul
 Web based WIFI setup, upon initial usage.
 Web based configuration, to preset up to 8 display formats or messages.
 Date time formats via strftime() c library standard.
 Ad-hoc message via web page posting.
 Synchronize date time via ntp.org time server.
-Various setting including autmatic cycling of messages, alternate numeric symbols, etc.
+Various setting including automatic cycling of messages, alternate numeric symbols, etc.
 Employs ESP32 S2 Mini, with open source code via github.
+S14-24 24 characters dimension 200mm x 32mm x 30mm (approx. 8" x 1-1/4" x 1-1/4")
+S14-12 12 characters dimension 100mm x 30mm x 30mm (approx. 4" x 1-1/4" x 1-1/4")
 :
 :h3 Technical Details
 :ul
@@ -28,17 +37,23 @@ Access of IO registers directly and timer interrupts for efficient multiplexing.
 :h3 Initial Setup
 The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. 
 Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. 
-:j s14_23.jpg
-:
+:j s14-24-12_04.jpg
 Use your phone or computer and locate the AP with SSID "esp32ap", connect with password "12345678".
 Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.
 Enter your home network WIFI credentials and hit "Apply" button.
 :j240 ap01.png ap02.png ap03.png
-:
+ 
 Your S14Clock should connect to your home network and will start to work after showing it's IP address briefly. You may need to reset the S14Clock via the bottom hardware reset button.
+:h3 Application Notes (Clock Unit)
+The S14Clock make use of the button on the ESP32 module for local functionalities, at the back of the clock unit, there are 2 buttons, the button marked 'RST' is a power reset button. The button marked '0' is the application button;
+:j s14_back.jpg
+:ul
+Single press advances (cycles) the 8 preset display format / messages.
+Press-n-hold advances the display transition effect, subsequent presses cycles to the next transition effect.
+Double press in quick succession starts the countdown / countup timer with the present countdown / countup message. Double presses again when clock unit is already in countdown mode will advance the countdown time. Single key press cancels the countdown timer.
 :
-:h3 Application Notes
-Upon power up the S14Clock will show it's IP address briefly. The S14Clock runs a web server for configuration and cusomization. Enter the IP address via a browser to access the appliation server.
+:h3 Application Notes (Web Server)
+Upon power up the S14Clock will show it's IP address briefly. The S14Clock runs a web server for configuration and customization. Enter the IP address via a browser to access the appliation server.
 :p
 The four b(primary buttons) at the top of the page serves the following purposes;
 :
@@ -71,6 +86,10 @@ The b(Format Control) section explains how tokens can be used to display various
 4x 3692AS common cathode 14 segments 6 digits LED module (2x for S14-12)
 2x 8x2 male header
 2x 8x2 female header
+4x M3 16mm steel screws
+4x M3 steel nuts
+4x M3 8mm black acrylic spacers
+1x laser cut acrylic filter / front panel
 :
 
 Component placement follows printed circuit board footprints. As all components are symmetrical, please observe orientation when placing. Apart from that te soldering process is straightforward.
@@ -156,5 +175,6 @@ Component placement follows printed circuit board footprints. As all components 
         +-----------------+  * actual io pin to row / col map depends on PCB version
 
 :
-This is an open source project. Source code can be found
+The io pin mappings between ESP32 and the led modules are not shown in the schematic. They can be found in the source file. As there are different version of design, the source code is made so that the mapping can be re-defined easily via #define statements. Please consult source code for details.
+This is an open source project. Source code and build instructions can be found in l(my github repository;https://github.com/simpleavr/s14clock)
 

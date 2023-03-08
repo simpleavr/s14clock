@@ -3,8 +3,8 @@
 //
 // git clone https://github.com/simpleavr/s14clock.git
 // cd s14clock
-// pio project init --board lolin_s2_mini
-// pio lib install AutoConnect
+// (pio project init --board lolin_s2_mini) may need to
+// (pio lib install AutoConnect) may need to
 // pio run --target upload
 // pio run -t nobuild -t upload
 //
@@ -13,8 +13,9 @@
  platformio is used to build
  relies on Arduino AutoConnect library by Hieromon
  */
+// c2303 add support for vertical numerics
 //
-#define USE_WIFI			// comment out to test display only
+//#define USE_WIFI			// comment out to test display only
 
 
 #include <WiFi.h>
@@ -35,8 +36,8 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-//#include "ver2.h"
-#include "ver2l.h"
+#include "ver2.h"
+//#include "ver2l.h"
 
 #define _LED		LED_BUILTIN
 #define _BT2		0
@@ -246,8 +247,19 @@ void writeAscii(uint8_t d, uint8_t v, uint16_t opt=0) {
 	uint16_t cmp = 0x0001, segs = 0x0000;
 
 	if ((opt&DISP_UPPERCASE) && v >= 0x61 && v <= 0x7a) v -= 0x20;
-	if ((opt&0x0300) && v >= 0x30 && v <= 0x3f) v = (v&0x0f) | ((opt>>8)-1)<<4;
-	if (opt&0x0400) v += 0x80;
+	// opt>>8 to use numeric set, 1-chinese, 2-flower, 3-vertical 4-aurebesh
+	// c2303 add support for vertical numerics
+	//if ((opt&0x0300) && v >= 0x30 && v <= 0x3f) v = (v&0x0f) | ((opt>>8)-1)<<4;
+	opt >>= 8;
+	if ((opt&0x03) && v >= 0x30 && v <= 0x3f) {
+		v &= 0x0f;
+		switch (opt) {
+			case 2: v += 1<<4; break;
+			case 3: v += 9<<4;
+			default: break;
+		}//switch
+	}//if
+	if (opt&0x04) v += 0x80;		// aurebesh, shift full character set
 	_chr_buf[d] = v;
 }
 
@@ -601,7 +613,8 @@ void handleRoot() {
   </tr>\
   <tr> <td>~1</td> <td>Chinese Numerics</td> </tr>\
   <tr> <td>~2</td> <td>Flower Code Numerics</td> </tr>\
-  <tr> <td>~3</td> <td>Aurebesh Character Set</td> </tr>\
+  <tr> <td>~3</td> <td>Vertical Numerics</td> </tr>\
+  <tr> <td>~4</td> <td>Aurebesh Character Set</td> </tr>\
   <tr> <td>~X</td> <td>Message expires in 60 seconds</td> </tr>\
   <tr> <td>~x</td> <td>Message expires in 10 seconds</td> </tr>\
   <tr> <td>~W</td> <td>Worded Time Format 1</td> </tr>\
@@ -893,7 +906,9 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 		if (*sp == '~' && (strchr("~123WwRrUuDdXx", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
-			if (strchr("123", *sp)) *pOpt |= 1 << ((*sp - '1') + 8);
+			// c2303 add support for vertical numerics
+			//if (strchr("123", *sp)) *pOpt |= 1 << ((*sp - '1') + 8);
+			if (strchr("1234", *sp)) *pOpt |= (*sp - '0') << 8;
 			if (strchr("WwRrUuDdXx", *sp)) dp = wordTime(dp, *sp);
 		}//if
 		else {
