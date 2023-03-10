@@ -14,6 +14,7 @@
  relies on Arduino AutoConnect library by Hieromon
  */
 // c2303 add support for vertical numerics
+// c2303 change "glow" transition to "drip"
 //
 //#define USE_WIFI			// comment out to test display only
 
@@ -54,7 +55,7 @@ uint8_t _brightness = 4;
 
 #define DISP_SHUTTER		1
 #define DISP_SHIFT   		2
-#define DISP_GLOW    		3
+#define DISP_DRIP    		3
 #define DISP_FLIP    		4
 #define DISP_SPIN    		5
 #define DISP_CLEAR			(1<<3)
@@ -303,7 +304,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 		case DISP_SHIFT:
 			{
 				clearAll();
-				uint8_t j=23;
+				uint8_t j=(NUM_OF_DIGITS-1);
 				while (j--) {
 					const char *p = s;
 					uint8_t done=0;
@@ -316,7 +317,8 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				}//while
 			}
 			break;
-		case DISP_GLOW:
+		case DISP_DRIP:
+			/*
 			{
 				_brightness = 7;
 				while (_brightness--) delay(80);
@@ -325,7 +327,30 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				while (_brightness++<=7) delay(80);
 				_brightness = _settings.brightness&0x07;
 			}
-			//return (strlen(s));
+			*/
+			{
+				// [...........0] _12345
+				// [..........0.] _12345
+				// [.0..........] _12345
+				// [0...........] _12345
+				//  next
+				// [01..........] __2345
+				clearAll();
+				const char *p = s;
+				uint8_t j=0;
+				while (*p) {
+					if (*p != ' ') {
+						for (uint8_t i=(NUM_OF_DIGITS-1);i>j;i--) {
+							_chr_buf[i] = ' ';
+							delay(5);
+							writeAscii(i-1, *p, opt);
+							delay(10);
+						}//for
+					}//if
+					j++;
+					p++;
+				}//while
+			}
 			break;
 		case DISP_FLIP:
 			{
@@ -587,7 +612,7 @@ void handleRoot() {
 		  <input type='radio' name='transition' value=0 %s> NA\
 		  <input type='radio' name='transition' value=1 %s> Blink\
 		  <input type='radio' name='transition' value=2 %s> Shift\
-		  <input type='radio' name='transition' value=3 %s> Glow\
+		  <input type='radio' name='transition' value=3 %s> Drip\
 		  <input type='radio' name='transition' value=4 %s> Flip\
 		  <input type='radio' name='transition' value=5 %s> Spin\
 	  </p>\
@@ -1091,7 +1116,7 @@ void loop() {
 	if (_input == 3) stay_in_3_until = millis() + 1000;
 	if (_input & 0x03) current_time += 1000;		// force immediate action
 
-	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-GLOW", "-FLIP", "-SPIN", };
+	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-DRIP", "-FLIP", "-SPIN", };
 	switch (_input) {
 		case 1: // increment countdown minutes
 			if (!_settings.use[8]) _settings.use[8] = 1;

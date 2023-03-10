@@ -2,7 +2,7 @@
 <head><link rel="stylesheet" type="text/css" href="../default.css"></head>
 <body>
 <br>
-<h2>S24 Clock</h2><br>
+<h2>S14 Clock</h2><br>
 <p>
 <b>Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment LED display</b>
 </p>
@@ -12,7 +12,10 @@
 <iframe width="560" height="315" src="https://www.youtube.com/embed/q_kRyNXgdq0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 <br><br>
 <h3>Description</h3><br>
+<p>
 <p>This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.</p>
+<p>The S14Clock is available for purchase from <a href="https://www.tindie.com/products/29601/">store139 in Tindie</a></p>
+</p>
 <br><img  border="2px solid #555" src="images/s14-12-24_00.JPG"><img  border="2px solid #555" src="images/s14-24-12_01.JPG"><br><br>
 <p>Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.</p>
 <p>A single tactile button is used to advance one of the eight present display formats / messages. The same button when pressn-hold allows cycling between various display transition effects.</p>
@@ -79,11 +82,29 @@ A separated <b>countdown content display</b> set is used specifically for countd
 <p>The rest of the configuration parameters are self explainary. Countdown Increments, Transit Effects, Cycle Seconds (0 for no content cycling), Brightness, Rotate (when display is turn upside down), All Caps, Auresh (special font) and Time Zone.</p>
 <p>
 The <b>Format Control</b> section explains how tokens can be used to display various date time elements, plus other special features in S14Clock, builtin features are in the format of tilde + code (ex. ~W), strtime() tokens in the format of percent + code (ex. %H), strtime() is a C language function for date time formatting.
+<p>
+Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also require a hardware reset on the clock unit to take effect.
 </p>
 </p>
+</p>
+<h3>Firmware Update</h3><br>
+<p>
+<p>Potential bug fixes and feature enhancements will be provided in <a href="https://github.com/simpleavr/s14clock">my github repository</a>. </p>
+<p><a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool">Adafruit's ESPTool</a> can be used to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use it;</p>
+<ul>
+<li>Download appropriate firmware bin file from my github repository</li>
+<li>Conncet the S14Clock unit to laptop / PC via usb</li>
+<li>Launch browser and navigate to the above mentioned ESPTool web page</li>
+<li>Reset clock unit by pressing 'Reset' while holding the '0' button</li>
+<li>Click 'Connect' button on ESPTool web page, identify (ESP32-S2) and select com port</li>
+<li>Enter 10000 (makes the entry 0x100000), '5 zeros', in first entry box</li>
+<li>Use 'Choose a file..' button to select firmware bin file</li>
+<li>Click 'Program' button to start firmware loading</li>
+</ul>
+</p>
+<br>
 <h3>Components and Assembly</h3><br>
 <br><img  border="2px solid #555" src="images/s14clk_parts.JPG"><br><br>
-<br>
 <ul>
 <li>1× ESP32 S2 Mini module</li>
 <li>1x 74HC154D 4-16 line decoder (not needed for S14-12)</li>

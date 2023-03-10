@@ -1,5 +1,5 @@
 
-:h2 S24 Clock
+:h2 S14 Clock
 
 :p
 b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment LED display)
@@ -8,8 +8,10 @@ b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segm
 :v q_kRyNXgdq0 (replace w/ video)
 
 :h3 Description
-:
+:p
 This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.
+The S14Clock is available for purchase from l(store139 in Tindie;https://www.tindie.com/products/29601/)
+:
 :j s14-12-24_00.JPG s14-24-12_01.JPG
 Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.
 A single tactile button is used to advance one of the eight present display formats / messages. The same button when pressn-hold allows cycling between various display transition effects.
@@ -76,7 +78,24 @@ Tokens are used to substitute current date time elements and also font used. The
 The rest of the configuration parameters are self explainary. Countdown Increments, Transit Effects, Cycle Seconds (0 for no content cycling), Brightness, Rotate (when display is turn upside down), All Caps, Auresh (special font) and Time Zone.
 :p
 The b(Format Control) section explains how tokens can be used to display various date time elements, plus other special features in S14Clock, builtin features are in the format of tilde + code (ex. ~W), strtime() tokens in the format of percent + code (ex. %H), strtime() is a C language function for date time formatting.
+:p
+Change of b(Time Zone), after clicking on the 'Save' button, will also require a hardware reset on the clock unit to take effect.
 :
+:h3 Firmware Update
+:p
+Potential bug fixes and feature enhancements will be provided in l(my github repository;https://github.com/simpleavr/s14clock). 
+l(Adafruit's ESPTool;https://adafruit.github.io/Adafruit_WebSerial_ESPTool) can be used to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use it;
+:ul
+Download appropriate firmware bin file from my github repository
+Conncet the S14Clock unit to laptop / PC via usb
+Launch browser and navigate to the above mentioned ESPTool web page
+Reset clock unit by pressing 'Reset' while holding the '0' button
+Click 'Connect' button on ESPTool web page, identify (ESP32-S2) and select com port
+Enter 10000 (makes the entry 0x100000), '5 zeros', in first entry box
+Use 'Choose a file..' button to select firmware bin file
+Click 'Program' button to start firmware loading
+:
+
 :h3 Components and Assembly
 :j s14clk_parts.JPG
 
