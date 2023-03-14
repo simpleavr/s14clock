@@ -97,7 +97,7 @@ Click 'Program' button to start firmware loading
 :
 
 :h3 Components and Assembly
-:j s14clk_parts.JPG
+:j s14_parts.JPG
 
 :ul
 1× ESP32 S2 Mini module

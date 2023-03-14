@@ -16,7 +16,7 @@
 // c2303 add support for vertical numerics
 // c2303 change "glow" transition to "drip"
 //
-//#define USE_WIFI			// comment out to test display only
+#define USE_WIFI			// comment out to test display only
 
 
 #include <WiFi.h>
@@ -37,8 +37,10 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-#include "ver2.h"
-//#include "ver2l.h"
+//#include "ver2.h"
+#include "ver2l.h"
+
+#define VERSION "HW2.0 FW2.01"
 
 #define _LED		LED_BUILTIN
 #define _BT2		0
@@ -513,7 +515,7 @@ void notFound() {
   server.send(404, "text/plain", "Not found");
 }
 
-char htmlResponse[6000];
+char htmlResponse[7200];
 
 void handleRoot() {
   snprintf(htmlResponse, 6000, "\
@@ -534,19 +536,13 @@ void handleRoot() {
   <a href=\"/button1\"><button>Count Down</button></a>\
   <a href=\"/button2\"><button>Advance Display</button></a>\
   <a href=\"/reset\"><button>Reset Configuration</button></a><br><br>\
-  <a href=\"/_ac\"><button>Reset WIFI</button></a>\
+  <a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
+  &nbsp;via AP menu Reset entry\
   </fieldset><br>\
-  <form action='/fix'>\
-	  <fieldset>\
-	  <legend style='color:dimgrey'><b>One-time Message</b></legend>\
-		  <input type='text' name='message' value='~x' size='24' maxlength='24' autofocus>\
-		  <input type='submit' value='Send'>\
-	  </fieldset>\
-  </form><br>\
   <form action='/action_page'>\
 	  <fieldset>\
 	  <legend style='color:dimgrey'><b>Display Contents</b></legend>\
-	  Content accepts ~? (custom) and %%? (strtime) formatting tokens<br>\
+	  use ~? (custom), %%? (strtime) tokens<br>\
 	  <table cellspacing='2px' cellpadding='2px'>\
 	  <tr>\
 		  <td>Content</td>\
@@ -624,10 +620,18 @@ void handleRoot() {
 		  <p>Time Zone (-11 to 14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d></p>\
 		  <p id='suggest_tz'></p>\
 		  <input type='submit' value='Save Configuration'>\
+		  &nbsp;%s\
 	  </fieldset>\
 	  <br>\
   </form>\
+  <form action='/fix'>\
+	  <fieldset>\
+	  <legend style='color:dimgrey'><b>One-time Message</b></legend>\
+		  <input type='text' name='message' value='~x' size='24' maxlength='24' autofocus>\
+		  <input type='submit' value='Send'>\
+	  </fieldset>\
   </fieldset>\
+  </form><br>\
   <fieldset>\
   <legend style='color:dimgrey'><b>Format Control</b></legend>\
   Formatting tokens can be used in content / message<br><br>\
@@ -682,7 +686,8 @@ _settings.brightness,
 _settings.options & OPT_ROTATED ? "checked" : "", 
 _settings.options & OPT_TOUPPER ? "checked" : "", 
 _settings.options & OPT_XFONT   ? "checked" : "", 
-_settings.timezone
+_settings.timezone,
+VERSION
 );
 
 	server.send(200, "text/html", htmlResponse);
@@ -1026,6 +1031,9 @@ void setup() {
 	delay(400);
 	writeString("************************");
 	delay(400);
+	clearAll();
+	writeString(VERSION);
+	delay(1000);
 	clearAll();
 #ifdef USE_WIFI
 	writeString("CONNECTING");
