@@ -37,8 +37,8 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-//#include "ver2.h"
-#include "ver2l.h"
+#include "ver2.h"
+//#include "ver2l.h"
 
 #define VERSION "HW2.0 FW2.01"
 
@@ -250,7 +250,7 @@ void writeAscii(uint8_t d, uint8_t v, uint16_t opt=0) {
 	uint16_t cmp = 0x0001, segs = 0x0000;
 
 	if ((opt&DISP_UPPERCASE) && v >= 0x61 && v <= 0x7a) v -= 0x20;
-	// opt>>8 to use numeric set, 1-chinese, 2-flower, 3-vertical 4-aurebesh
+	// opt>>8 to use numeric set, 1-kanji, 2-flower, 3-vertical 4-aurebesh
 	// c2303 add support for vertical numerics
 	//if ((opt&0x0300) && v >= 0x30 && v <= 0x3f) v = (v&0x0f) | ((opt>>8)-1)<<4;
 	opt >>= 8;
@@ -305,14 +305,19 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			break;
 		case DISP_SHIFT:
 			{
-				clearAll();
+				//clearAll();
 				uint8_t j=(NUM_OF_DIGITS-1);
+				_last_string[j] = '\0';
+				const char *lp = _last_string;
 				while (j--) {
-					const char *p = s;
-					uint8_t done=0;
-					for (uint8_t i=j;i<24;i++) {
-						if (!*p) done = 1;
-						writeAscii(i, done ? ' ' : *p, opt);
+					const char *p = lp++;
+					//uint8_t done=0;
+					//clearAll();
+					for (uint8_t i=0;i<24;i++) {
+						//if (!*p) done = 1;
+						//writeAscii(i, done ? ' ' : *p, opt);
+						if (j == i) p = s;
+						writeAscii(i, *p ? *p : ' ', opt);
 						p++;
 					}//for
 					delay(20);
@@ -321,7 +326,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			break;
 		case DISP_DRIP:
 			/*
-			{
+			{	// this was 'glow'
 				_brightness = 7;
 				while (_brightness--) delay(80);
 				delay(60);
@@ -331,12 +336,6 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			}
 			*/
 			{
-				// [...........0] _12345
-				// [..........0.] _12345
-				// [.0..........] _12345
-				// [0...........] _12345
-				//  next
-				// [01..........] __2345
 				clearAll();
 				const char *p = s;
 				uint8_t j=0;
@@ -515,7 +514,7 @@ void notFound() {
   server.send(404, "text/plain", "Not found");
 }
 
-char htmlResponse[7200];
+char htmlResponse[6000];
 
 void handleRoot() {
   snprintf(htmlResponse, 6000, "\
@@ -532,97 +531,97 @@ void handleRoot() {
   </head>\
   <body>\
   <fieldset>\
-  <legend style='color:dimgrey'><b>Seg14 Clock</b></legend>\
-  <a href=\"/button1\"><button>Count Down</button></a>\
+<legend style='color:dimgrey'><b>Seg14 Clock</b></legend>\
+<a href=\"/button1\"><button>Count Down</button></a>\
   <a href=\"/button2\"><button>Advance Display</button></a>\
   <a href=\"/reset\"><button>Reset Configuration</button></a><br><br>\
-  <a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
-  &nbsp;via AP menu Reset entry\
+<a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
+&nbsp;&nbsp;via AP menu Reset entry\
   </fieldset><br>\
   <form action='/action_page'>\
-	  <fieldset>\
-	  <legend style='color:dimgrey'><b>Display Contents</b></legend>\
-	  use ~? (custom), %%? (strtime) tokens<br>\
-	  <table cellspacing='2px' cellpadding='2px'>\
-	  <tr>\
-		  <td>Content</td>\
-		  <td>End With</td>\
-		  <td>Use</td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textA' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useA' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textB' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useB' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textC' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useC' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textD' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useD' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textE' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useE' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textF' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useF' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textG' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useG' %s></td>\
-	  </tr>\
-	  <tr>\
-		  <td><input type='text' name='textH' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='12'>  </td>\
-		  <td><input type='checkbox' name='useH' %s></td>\
-	  </tr>\
-	  <tr>\
-	  <td>Content (Count Down)</td>\
-	  <td>#Dd #Uu</td>\
-	  <tr>\
-		  <td><input type='text' name='textX' value='%s' size='24' maxlength='24' autofocus>  </td>\
-		  <td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>\
-	  </tr>\
-	  </table>\
-	  <p>Countdown Increment:<br>\
-		  <input type='radio' name='useX' value=1 %s> 1 min\
-		  <input type='radio' name='useX' value=5 %s> 5 min\
-		  <input type='radio' name='useX' value=10 %s> 10 min\
-		  <input type='radio' name='useX' value=15 %s> 15 min\
-		  <input type='radio' name='useX' value=30 %s> 30 min\
-	  </p>\
-	  <p>Transition Effect:<br>\
-		  <input type='radio' name='transition' value=0 %s> NA\
-		  <input type='radio' name='transition' value=1 %s> Blink\
-		  <input type='radio' name='transition' value=2 %s> Shift\
-		  <input type='radio' name='transition' value=3 %s> Drip\
-		  <input type='radio' name='transition' value=4 %s> Flip\
-		  <input type='radio' name='transition' value=5 %s> Spin\
-	  </p>\
-	  <p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>\
-		  <p>Bright: <input type='range' name='brightness' min=0 max=7 value=%d>\
-		    Rotate: <input type='checkbox' name='optRotate' %s></p>\
-		   All Caps: <input type='checkbox' name='optToUpper' %s>\
-		   Aurebesh: <input type='checkbox' name='optXfont' %s></p>\
-		  <p>Time Zone (-11 to 14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d></p>\
-		  <p id='suggest_tz'></p>\
-		  <input type='submit' value='Save Configuration'>\
-		  &nbsp;%s\
-	  </fieldset>\
-	  <br>\
+<fieldset>\
+<legend style='color:dimgrey'><b>Display Contents</b></legend>\
+use ~? (custom), %%? (strtime) tokens<br>\
+<table cellspacing='2px' cellpadding='2px'>\
+<tr>\
+<td>Content</td>\
+<td>End With</td>\
+<td>Use</td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textA' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useA' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textB' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useB' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textC' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useC' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textD' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useD' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textE' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useE' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textF' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useF' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textG' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useG' %s></td>\
+</tr>\
+<tr>\
+<td><input type='text' name='textH' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='checkbox' name='useH' %s></td>\
+</tr>\
+<tr>\
+<td>Content (Count Down / Up)</td>\
+<td>#Dd #Uu</td>\
+<tr>\
+<td><input type='text' name='textX' value='%s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>\
+</tr>\
+</table>\
+<p>Countdown Increment:<br>\
+<input type='radio' name='useX' value=1 %s> 1 min\
+<input type='radio' name='useX' value=5 %s> 5 min\
+<input type='radio' name='useX' value=10 %s> 10 min\
+<input type='radio' name='useX' value=15 %s> 15 min\
+<input type='radio' name='useX' value=30 %s> 30 min\
+</p>\
+<p>Transition Effect:<br>\
+<input type='radio' name='transition' value=0 %s> None\
+<input type='radio' name='transition' value=1 %s> Blink\
+<input type='radio' name='transition' value=2 %s> Shift\
+<input type='radio' name='transition' value=3 %s> Drip\
+<input type='radio' name='transition' value=4 %s> Flip\
+<input type='radio' name='transition' value=5 %s> Spin\
+</p>\
+<p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>\
+<p>Bright: <input type='range' name='brightness' min=0 max=7 value=%d>\
+ Rotate: <input type='checkbox' name='optRotate' %s></p>\
+All Caps: <input type='checkbox' name='optToUpper' %s>\
+  Aurebesh: <input type='checkbox' name='optXfont' %s></p>\
+<p>Time Zone (-11..14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d>\
+&nbsp;<label id='suggest_tz'></label></p>\
+<input type='submit' value='Save Configuration'>\
+&nbsp;&nbsp;%s\
+</fieldset>\
+<br>\
   </form>\
   <form action='/fix'>\
 	  <fieldset>\
@@ -636,28 +635,28 @@ void handleRoot() {
   <legend style='color:dimgrey'><b>Format Control</b></legend>\
   Formatting tokens can be used in content / message<br><br>\
   <table border='1px' border-collapse='collapse' >\
-  <tr>\
-    <th>Token</th>\
-    <th>Effect on Content / Message</th>\
-  </tr>\
-  <tr> <td>~1</td> <td>Chinese Numerics</td> </tr>\
-  <tr> <td>~2</td> <td>Flower Code Numerics</td> </tr>\
-  <tr> <td>~3</td> <td>Vertical Numerics</td> </tr>\
-  <tr> <td>~4</td> <td>Aurebesh Character Set</td> </tr>\
-  <tr> <td>~X</td> <td>Message expires in 60 seconds</td> </tr>\
-  <tr> <td>~x</td> <td>Message expires in 10 seconds</td> </tr>\
-  <tr> <td>~W</td> <td>Worded Time Format 1</td> </tr>\
-  <tr> <td>~w</td> <td>Worded Time Format 2</td> </tr>\
-  <tr> <td>~R</td> <td>Roman Numeric Hour-Min</td> </tr>\
-  <tr> <td>~r</td> <td>Roman Numeric Hour-Min-Sec</td> </tr>\
-  <tr> <td>~D</td> <td>Countdown HH:MM:SS</td> </tr>\
-  <tr> <td>~d</td> <td>Countdown HH:MM</td> </tr>\
-  <tr> <td>~U</td> <td>Countup HH:MM:SS</td> </tr>\
-  <tr> <td>~u</td> <td>Countup HH:MM</td> </tr>\
+<tr>\
+<th>Token</th>\
+<th>Effect on Content / Message</th>\
+</tr>\
+<tr><td>~1</td><td>Kanji Numerics</td></tr>\
+<tr><td>~2</td><td>Flower Code Numerics</td></tr>\
+<tr><td>~3</td><td>Vertical Numerics</td></tr>\
+<tr><td>~4</td><td>Aurebesh Character Set</td></tr>\
+<tr><td>~X</td><td>Message expires in 60 seconds</td></tr>\
+<tr><td>~x</td><td>Message expires in 10 seconds</td></tr>\
+<tr><td>~W</td><td>Worded Time Format 1</td></tr>\
+<tr><td>~w</td><td>Worded Time Format 2</td></tr>\
+<tr><td>~R</td><td>Roman Numeric Hour-Min</td></tr>\
+<tr><td>~r</td><td>Roman Numeric Hour-Min-Sec</td></tr>\
+<tr><td>~D</td><td>Countdown HH:MM:SS</td></tr>\
+<tr><td>~d</td><td>Countdown HH:MM</td></tr>\
+<tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
+<tr><td>~u</td><td>Countup HH:MM</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
   </fieldset><br>\
-  <script>document.getElementById('suggest_tz').innerHTML = 'Suggest Time Zone -' + (new Date().getTimezoneOffset() / 60);</script>\
+  <script>document.getElementById('suggest_tz').innerHTML = 'Suggest  -' + (new Date().getTimezoneOffset() / 60);</script>\
   </body>\
 </html>\
 ",
@@ -1033,7 +1032,7 @@ void setup() {
 	delay(400);
 	clearAll();
 	writeString(VERSION);
-	delay(1000);
+	delay(2000);
 	clearAll();
 #ifdef USE_WIFI
 	writeString("CONNECTING");
