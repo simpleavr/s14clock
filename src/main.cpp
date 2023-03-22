@@ -37,8 +37,8 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-#include "ver2.h"
-//#include "ver2l.h"
+//#include "ver2.h"
+#include "ver2l.h"
 
 #define VERSION "HW2.0 FW2.01"
 
