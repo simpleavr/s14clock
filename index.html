@@ -97,9 +97,17 @@ Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also requi
 <li>Launch browser and navigate to the above mentioned ESPTool web page</li>
 <li>Reset clock unit by pressing 'Reset' while holding the '0' button</li>
 <li>Click 'Connect' button on ESPTool web page, identify (ESP32-S2) and select com port</li>
-<li>Enter 10000 (makes the entry 0x100000), '5 zeros', in first entry box</li>
+<li>Enter 10000 (makes the entry 0x10000), '4 zeros', in first entry box</li>
 <li>Use 'Choose a file..' button to select firmware bin file</li>
 <li>Click 'Program' button to start firmware loading</li>
+</ul>
+</p>
+<p>
+<p>In extreme case (AutoConnect failed, power off during flash writing, etc), you can try to erase everything in the S2 mini memory and upload bootloader, partition and firmware all over again. The procedure is similar to the above, except to click 'Erase' before we select files to upload. And we will need to specify 3 binaries to upload;</p>
+<ul>
+<li>offset 0x1000, bootloader.bin</li>
+<li>offset 0x8000, partitions.bin</li>
+<li>offset 0x10000, firmware??_?_?.bin</li>
 </ul>
 </p>
 <br>
