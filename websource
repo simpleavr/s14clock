@@ -10,7 +10,8 @@ b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segm
 :h3 Description
 :p
 This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.
-The S14Clock is available for purchase from l(store139 in Tindie;https://www.tindie.com/products/29601/)
+The S14Clock is available for purchase from l(store139 in Tindie;https://www.tindie.com/products/29601/).
+If you are building this project, there are additonal tips in the l(project wiki page;https://github.com/simpleavr/s14clock/wiki).
 :
 :j s14-12-24_00.JPG s14-24-12_01.JPG
 Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.
@@ -86,7 +87,7 @@ Change of b(Time Zone), after clicking on the 'Save' button, will also require a
 Potential bug fixes and feature enhancements will be provided in l(my github repository;https://github.com/simpleavr/s14clock). 
 l(Adafruit's ESPTool;https://adafruit.github.io/Adafruit_WebSerial_ESPTool) can be used to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use it;
 :ul
-Download appropriate firmware bin file from my github repository
+Download appropriate firmware bin file from my github repository, binaries are b(contained in releases).
 Conncet the S14Clock unit to laptop / PC via usb
 Launch browser and navigate to the above mentioned ESPTool web page
 Reset clock unit by pressing 'Reset' while holding the '0' button
@@ -118,7 +119,7 @@ offset 0x10000, firmware??_?_?.bin
 1x laser cut acrylic filter / front panel
 :
 
-Component placement follows printed circuit board footprints. As all components are symmetrical, please observe orientation when placing. Apart from that te soldering process is straightforward.
+Component placement follows printed circuit board footprints. As all components are symmetrical, please observe orientation when placing. Apart from that the soldering process is straightforward.
 
 :h3 Schematic and Source Code
 :pre
