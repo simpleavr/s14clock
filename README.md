@@ -5,7 +5,7 @@ S14Clock is a bar shaped, web synchronized word clock featuring 24 or 12 charact
 
 [Project wiki page, tips on building](https://github.com/simpleavr/s14clock/wiki.html)
 
-[Project discussion page, questions and comments](https://github.com/simpleavr/s14clockdiscussions.html)
+[Project discussion page, questions and comments](https://github.com/simpleavr/s14clock/discussions.html)
 
 [Install firmware](https://simpleavr.github.io/s14clock/install.html) **NOT YET WORKING**
 
