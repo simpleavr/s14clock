@@ -3,11 +3,11 @@ S14Clock is a bar shaped, web synchronized word clock featuring 24 or 12 charact
 
 [Project description](https://simpleavr.github.io/s14clock/index.html)
 
-[Project wiki page, tips on building](wiki.html)
+[Project wiki page, tips on building](https://github.com/simpleavr/s14clock/wiki.html)
 
-[Project discussion page, questions and comments](discussions.html)
+[Project discussion page, questions and comments](https://github.com/simpleavr/s14clockdiscussions.html)
 
-[Install firmware](install.html) **NOT YET WORKING**
+[Install firmware](https://simpleavr.github.io/s14clock/install.html) **NOT YET WORKING**
 
 [Unit can be obtained from store139 in tindie](https://www.tindie.com/products/29601/)
 
