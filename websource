@@ -10,6 +10,7 @@ b(Bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segm
 :h3 Description
 :p
 This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.
+Firmware Installer l(click here;./install.html).
 The S14Clock is available for purchase from l(store139 in Tindie;https://www.tindie.com/products/29601/).
 If you are building this project, there are additonal tips in the l(project wiki page;https://github.com/simpleavr/s14clock/wiki).
 :
