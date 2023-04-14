@@ -3,7 +3,7 @@
   "version": "2.01",
   "builds": [
     {
-      "chipFamily": "ESP32",
+      "chipFamily": "ESP32-S2",
       "parts": [
         { "path": "releases/tag/v2.01/bootloader.bin", "offset": 4096 },
         { "path": "releases/tag/v2.01/partitions.bin", "offset": 32768 },
