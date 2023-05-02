@@ -3,21 +3,13 @@ const uint8_t digit_map_r[]   = { 40, 39, 38, 37, 35, 36, 33, 21, 18, 17, 16, 34
 
 #define ENABLE_154	15
 #define NUM_OF_DIGITS	24
-#define BIT16_SEG	1
-const uint32_t segment_maskA = 0x00007ffe;
-const uint32_t segment_maskB = 0x00000000;
-const uint32_t all_maskA = 0x00277ffe;
-const uint32_t all_maskB = 0x000001fe;
-const uint32_t spin_maskA[] = {
+const uint32_t segment_mask = 0x00007ffe;
+const uint32_t all_mask = 0xff277ffe;
+const uint32_t spin_mask[] = {
 0x00000800, 0x00002800, 0x00002802, 0x00002822, 
 0x00002826, 0x00006826, 0x0000682e, 0x0000683e, 
 0x0000693e, 0x00006b3e, 0x00006f3e, 0x00007f3e, 
 0x00007f7e, 0x00007ffe, 0x00007ffe, };
-const uint32_t spin_maskB[] = {
-0x00000000, 0x00000000, 0x00000000, 0x00000000, 
-0x00000000, 0x00000000, 0x00000000, 0x00000000, 
-0x00000000, 0x00000000, 0x00000000, 0x00000000, 
-0x00000000, 0x00000000, 0x00000000, };
 const uint32_t asciiA[] = {
 0x0000003e, 0x00000018, 0x00000038, 0x00000838, 0x00006d18, 0x00000a7a, 0x00001298, 0x00001238, 
 0x00001080, 0x0000121a, 0x00000040, 0x00001200, 0x00000488, 0x00000038, 0x00001110, 0x00002850, 

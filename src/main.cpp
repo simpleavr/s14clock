@@ -16,7 +16,12 @@
 // c2303 add support for vertical numerics
 // c2303 change "glow" transition to "drip"
 //
-#define USE_WIFI			// comment out to test display only
+// c2305 start v202
+//       merge / simplify mask vairables
+//       use direct ESP32 register to setup all IO pins in setupDisply(), no more hard resets needed after flashing
+//       introduce version 3 hardware, which eliminates use of 74HC154D (4 to 16 line decoder)
+//       this is done by partial charliplexing the led modules
+//#define USE_WIFI			// comment out to test display only
 
 
 #include <WiFi.h>
@@ -38,9 +43,10 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
 //#include "ver2.h"
-#include "ver2l.h"
+//#include "ver2l.h"
+#include "ver3.h"
 
-#define VERSION "HW2.0 FW2.01"
+#define VERSION "HW2.0 FW2.02"
 
 #define _LED		LED_BUILTIN
 #define _BT2		0
@@ -99,8 +105,6 @@ static unsigned _excess_cnt = 0;
 */
 static const uint32_t *_font = asciiA;
 static const uint8_t *_onOff = asciiOnOff;
-const uint16_t map154[] = 
-	{ 11<<5, 12<<5, 13<<5, 14<<5, 10<<5, 5<<5, 4<<5, 6<<5, 7<<5, 8<<5, 9<<5, 15<<5, 2<<5, 1<<5, 0, 3<<5 };
 
 static uint8_t _input = 2;
 static int8_t _mode = -1;
@@ -109,14 +113,8 @@ static time_t _countfrom = 0;
 
 //________________________________________________________________________________
 void scan() {
-	//for (uint8_t d=0;d<12;d++) pinMode(d+1, INPUT);
-	//for (uint8_t s=0;s<14;s++) digitalWrite(seg_pins[s], LOW);
-	//delay(5);
 	// scan() is called at 40Khz, for 1/2 sec count to 20,000
 	if (++_excess_cnt > 5000) {
-		// 0..........b12345678901
-		// THIS IS A LONGER STRING
-		//
 		_excess_cnt = 0;
 		if (_excess_release) {				// done, we are just retaining last display content
 			_excess_release--;
@@ -155,10 +153,16 @@ void scan() {
 			pinMode(digit_map[d], INPUT);
 	}//else
 #else
+	REG_WRITE(GPIO_OUT_REG, 0);
+	REG_WRITE(GPIO_ENABLE_REG, 0);
+	REG_WRITE(GPIO_OUT1_REG, 0);
+	REG_WRITE(GPIO_ENABLE1_REG, 0);
+	/*
 	if (_settings.options&OPT_ROTATED) 
 		pinMode(digit_map_r[d], INPUT);		// turn off
 	else
 		pinMode(digit_map[d], INPUT);		// turn off
+	*/
 #endif
 	if (off) {
 		off--;
@@ -176,43 +180,45 @@ void scan() {
 		digitalWrite(digit_map[digit], LOW);
 		pinMode(digit_map[digit], INPUT);
 	}//if
-#else
-	digitalWrite(digit_map[digit], LOW);
-	pinMode(digit_map[digit], INPUT);
 #endif
-	//uint16_t cmp = 0x0001;
-	//const uint8_t *sp = (_settings.options&OPT_ROTATED) ?  seg_pins_r : seg_pins;
-	uint8_t num_segs = 0;
-	REG_WRITE(GPIO_OUT_W1TC_REG, segment_maskA);//0b001001101000001011111110);
-	REG_WRITE(GPIO_OUT1_W1TC_REG, segment_maskB);//0b00010110);
+#ifdef CHARLIE
+	uint32_t mask = digit >= CHARLIE ?  segment_mask_c : segment_mask;
+#else
+	uint32_t mask = segment_mask;
+#endif
+	REG_WRITE(GPIO_OUT_W1TC_REG, mask & 0x00ffffff);
+	REG_WRITE(GPIO_OUT1_W1TC_REG, mask >> 23);
 #ifdef ENABLE_154
+	const uint16_t map154[] = 
+		{ 11<<5, 12<<5, 13<<5, 14<<5, 10<<5, 5<<5, 4<<5, 6<<5, 7<<5, 8<<5, 9<<5, 15<<5, 2<<5, 1<<5, 0, 3<<5 };
 	REG_WRITE(GPIO_OUT1_W1TC_REG, 0x1e0);
 	if (digit > 7) {
 		digitalWrite(ENABLE_154, LOW);
 		REG_WRITE(GPIO_OUT1_W1TS_REG, map154[digit-8]);
 	}//if
 #endif
-	uint32_t maskA = 0x00ffffff, maskB = 0x000003ff;
-	if (_segment_limit) {
-		maskA = spin_maskA[_segment_limit];
-		maskB = spin_maskB[_segment_limit];
-	}//if
-	REG_WRITE(GPIO_OUT_W1TS_REG, _font[_chr_buf[d+_excess_shift]] & maskA);
-	REG_WRITE(GPIO_OUT1_W1TS_REG, (_font[_chr_buf[d+_excess_shift]] >> 24) & maskB);
-	//num_segs = _onOff[_chr_buf[d+_excess_shift]];
+	if (_segment_limit) mask = spin_mask[_segment_limit];
+#ifdef CHARLIE
+	if (digit >= CHARLIE)
+		_font  = (_settings.options&OPT_ROTATED) ? asciiB_c : asciiA_c;
+	else
+		_font  = (_settings.options&OPT_ROTATED) ? asciiB : asciiA;
+#endif
+#ifndef ENABLE_154
+	pinMode(digit_map[digit], INPUT);
+#endif
+	uint32_t font = _font[_chr_buf[d+_excess_shift]];
+	font &= mask;
+	REG_WRITE(GPIO_OUT_W1TS_REG, font & 0x00ffffff);
+#ifndef ENABLE_154
+	REG_WRITE(GPIO_ENABLE_REG, font & 0x00ffffff);
+#endif
+	font >>= 23;
+	REG_WRITE(GPIO_OUT1_W1TS_REG, font);
+#ifndef ENABLE_154
+	REG_WRITE(GPIO_ENABLE1_REG, font);
+#endif
 	on = _onOff[_chr_buf[d+_excess_shift]];
-	/*
-	for (uint8_t s=0;s<14;s++) {
-		if ((segs&cmp) && (!_segment_limit || (s<_segment_limit))) {
-			digitalWrite(sp[s], HIGH);
-			num_segs++;
-		}//if
-		else {
-			digitalWrite(sp[s], LOW);
-		}//else
-		cmp <<= 1;
-	}//for
-	*/
 #ifdef ENABLE_154
 	if (digit > 7) {
 		on += (on >> 1);
@@ -224,15 +230,6 @@ void scan() {
 	pinMode(digit_map[digit], OUTPUT);
 	on += _brightness;
 #endif
-	//digitalWrite(digit+1, LOW);
-	//if (s) pinMode(digit_map[digit], INPUT);		// turn off
-	/*
-	if (num_segs > 1) on += 2;
-	if (num_segs > 3) on += 2;
-	if (num_segs > 5) on += 2;
-	if (num_segs > 7) on += 2;
-	on += _brightness;
-	*/
 	off = 8-_brightness;
 }
 
@@ -415,18 +412,27 @@ void IRAM_ATTR onTimer() {
 //________________________________________________________________________________
 void setupDisplay() {
     pinMode(_BT2, INPUT_PULLUP);
-    pinMode(_LED, OUTPUT);
+    //pinMode(_LED, OUTPUT);
+
+	gpio_config_t io_cfg;
+	//io_cfg.pin_bit_mask = all_maskA | ((uint64_t) all_maskB << 32);
+	io_cfg.pin_bit_mask = (((uint64_t) all_mask >> 23) << 32) | (all_mask & 0x00ffffff);
+	io_cfg.mode = GPIO_MODE_INPUT_OUTPUT;
+	io_cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+	io_cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+	io_cfg.intr_type = GPIO_INTR_DISABLE;
+	gpio_config(&io_cfg);
 
 	//_settings.brightness = 4;
 	/*______ direct multiplexing
 	for (uint8_t i=1;i<=18;i++) pinMode(i, OUTPUT);
     pinMode(21, OUTPUT);
 	for (uint8_t i=33;i<=40;i++) pinMode(i, OUTPUT);
-	*/
 	REG_WRITE(GPIO_ENABLE_REG, all_maskA);//0b00000000001001111111111111111110);
 	REG_WRITE(GPIO_ENABLE1_REG, all_maskB);//0b0000000111111110);
 	pinMode(39, OUTPUT);
 	pinMode(40, OUTPUT);
+	*/
 #ifdef ENABLE_154
 	pinMode(ENABLE_154, OUTPUT);
 	digitalWrite(ENABLE_154, HIGH);
@@ -1044,33 +1050,31 @@ void setup() {
 		writeString(buf);
 		delay(2000);
 	}//if
-#endif
-	/*
-	if (setup)
-		writeString("CONNECTING", DISP_SHUTTER);
-	else
-		writeString("CONNECTED", DISP_SHUTTER);
+#else
+	writeString("NO WIFI", DISP_CLEAR);
 	delay(1000);
-	*/
-	//setESPAutoWiFiConfigDebugOut(_timeBar);
-	//if (ESPAutoWiFiConfigSetup(_LED, false, sizeof(_settings))) return;
+#endif
 	setupClock();
-	/*
-	strcpy(_settings.addn[8], "#d");
-	_settings.options = 0;
-	strcpy(_settings.text[0], "0123456789AB");
-	*_settings.addn[0] = '\0';
-	strcpy(_settings.text[1], "CDEFGHIJKLMN");
-	*_settings.addn[1] = '\0';
-	strcpy(_settings.text[2], "OPQRSTUVWXYZ");
-	*_settings.addn[2] = '\0';
-	_settings.cycle = 0;
-	_brightness = 4;
-	*/
+	// burn-in or debug use
 	//resetConfig();
 	//saveConfig();
 	//_input = 0x04;
 	//writeString("#x#1012345ABCXYZ", DISP_CLEAR);
+	_settings.brightness = 7;
+	_settings.cycle = 3;
+	_settings.options = OPT_TOUPPER;
+	_settings.options |= DISP_FLIP;
+	_settings.options |= OPT_ROTATED;
+	while (0) {
+		//writeString("*+\\/O0                  ");
+		writeString("012345      6789AB      ");
+		delay(1000);
+		writeString("      012345      6789AB");
+		delay(1000);
+		clearAll();
+		_settings.options ^= OPT_ROTATED;
+		clearAll();
+	}//while
 }
 static int _count = 0;
 //________________________________________________________________________________
