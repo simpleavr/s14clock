@@ -13,14 +13,16 @@
  platformio is used to build
  relies on Arduino AutoConnect library by Hieromon
  */
-// c2303 add support for vertical numerics
-// c2303 change "glow" transition to "drip"
+// c230301 add support for vertical numerics
+// c230301 change "glow" transition to "drip"
 //
-// c2305 start v202
-//       merge / simplify mask vairables
-//       use direct ESP32 register to setup all IO pins in setupDisply(), no more hard resets needed after flashing
-//       introduce version 3 hardware, which eliminates use of 74HC154D (4 to 16 line decoder)
-//       this is done by partial charliplexing the led modules
+// c230501 start v202
+//         merge / simplify mask vairables
+//         use direct ESP32 register to setup all IO pins in setupDisply(), no more hard resets needed after flashing
+//         introduce version 3 hardware, which eliminates use of 74HC154D (4 to 16 line decoder)
+//         this is done by partial charliplexing the led modules
+// c230504 io pin 18 always leaks (looks like S2 chips problem) and introduce ghosting, 
+//         avoid turning on digits for blanks to make it not / less visible
 //#define USE_WIFI			// comment out to test display only
 
 
@@ -227,8 +229,9 @@ void scan() {
 		pinMode(digit_map[digit], OUTPUT);
 	}//else
 #else
-	pinMode(digit_map[digit], OUTPUT);
-	on += _brightness;
+	// c230504 don't turn on digit if character is blank
+	if (on) pinMode(digit_map[digit], OUTPUT);
+	on += _brightness;		// potential to increase brightness by skipping blanks
 #endif
 	off = 8-_brightness;
 }
@@ -1060,11 +1063,11 @@ void setup() {
 	//saveConfig();
 	//_input = 0x04;
 	//writeString("#x#1012345ABCXYZ", DISP_CLEAR);
-	_settings.brightness = 7;
-	_settings.cycle = 3;
-	_settings.options = OPT_TOUPPER;
-	_settings.options |= DISP_FLIP;
-	_settings.options |= OPT_ROTATED;
+	//_settings.brightness = 7;
+	//_settings.cycle = 3;
+	//_settings.options = OPT_TOUPPER;
+	//_settings.options |= DISP_FLIP;
+	//_settings.options |= OPT_ROTATED;
 	while (0) {
 		//writeString("*+\\/O0                  ");
 		writeString("012345      6789AB      ");

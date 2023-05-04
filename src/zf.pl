@@ -2,11 +2,10 @@
 use strict;
 
 #    ___ a
-#  f|\|/|b (hij)
+#  f|\|/|b (hjk)
 #    - - g G
-#  e|/|\|c (mlk)
+#  e|/|\|c (nml)
 #    === d
-#
 #    ___ 
 #   |\|/|
 #    - - 
@@ -15,9 +14,9 @@ use strict;
 #
 my $not_used =<<'_E';
   a    ,  d    ,
- fhijb , cmlke ,
+ fhjkb , clmne ,
   g G  ,  G g  ,
- eklmc , bjihf ,
+ enmlc , bkjhf ,
   d    ,  a    ,
 
   ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,  ___  ,
@@ -158,9 +157,6 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 	print O "const uint8_t digit_map[]   = { ", join ", ", @use_dg, " };\n";
 	print O "const uint8_t digit_map_r[]   = { ", join ", ", reverse(@use_dg), " };\n\n";
 
-	my $o = join '', qw/a   b   c   d   e   f   g   G   h   i   j   k   l   m   D/;
-	my @r = qw/d   e   f   a   b   c   G   g   m   l   k   j   i   h   D/;
-
 	if ($fn =~ m/2l/) {		# l means long bar, v2l use 74HC154, v3l use charliplexing
 		print O "#define ENABLE_154	15\n";
 		print O "#define NUM_OF_DIGITS	24\n";
@@ -236,9 +232,9 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 		for my $raw ($orig) {
 			my $c = 0;
 			my @row = ();
-			my $m = "abcdefgGhijklm";
-			my $m0 = " a   fhijb g G eklmc d   ";
-			my $m1 = " d   cmlke G g bjihf a   ";
+			my $m = "abcdefgGhjklmn";
+			my $m0 = " a   fhjkb g G enmlc d   ";
+			my $m1 = " d   clmne G g bkjhf a   ";
 			for (split('\n', $raw)) {
 				/,/ or next;
 				$c or @row = ();
@@ -289,11 +285,6 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 				print O "};\n\n";
 			};
 
-			($a0, $a1, $a2) = (
-				"const uint32_t aurebeshA${suf}[] = {\n",
-				"const uint32_t aurebeshB${suf}[] = {\n",
-				"const uint8_t aurebeshOnOff${suf}[] = {\n",);
-			@brightness = ();
 		}
 		$repeat--;
 		($sg, $dg) = ($dg, $sg);
@@ -315,11 +306,11 @@ gen_file("ver1",
 
 gen_file("ver2", 
 	[ 10, 12, 13, 14, 16,  8, 11, 35, 38, 37, 40, 39,],
-	[ 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  9,  6,  7, 15,]);	# segment S11 and S13 switched in schematic
+	[ 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  7,  6,  9, 15,]);	# segment S11 and S13 switched in schematic
 
 gen_file("ver2l", 
 	[ 34, 16, 17, 18, 21, 33, 36, 35, 37, 38, 39, 40,],
-	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10, 12,  6,  7,  6,]);
+	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10,  7,  6, 12,  6,]);
 
 #gen_file("ver3", 
 #	[ 34, 16, 17, 18, 21, 33, 36, 35, 38, 37, 40, 39,],
@@ -328,8 +319,8 @@ gen_file("ver2l",
 gen_file("ver3", 
 	#[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
-	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  9,  3,  5, 11,],
-	[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  9, 11,  2, 11,]
+	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
+	[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
 	#[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5, ],
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  9, 11,  2, 11,]
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2,],
