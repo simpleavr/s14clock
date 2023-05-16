@@ -37,8 +37,8 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-//#include "ver2.h"
-#include "ver2l.h"
+#include "ver2.h"
+//#include "ver2l.h"
 
 #define VERSION "HW2.0 FW2.01"
 
@@ -1032,17 +1032,29 @@ void setup() {
 	delay(400);
 	clearAll();
 	writeString(VERSION);
-	delay(2000);
+	uint8_t burn_in = 0;
+	uint32_t current_time = millis();
+	while ((millis() - current_time) < 2000) {
+		if (digitalRead(_BT2) == LOW) {
+			while (digitalRead(_BT2) == LOW) {			// wait for key release
+				delay(10);
+			}//while
+			burn_in = 1;
+			writeString("BURN IN TEST");
+		}//if
+	}//while
 	clearAll();
 #ifdef USE_WIFI
-	writeString("CONNECTING");
-	if (setupWebServer()) {
-		//configTime(TIMEZONE, 0, NTPServer1, NTPServer2);
-		char buf[24];
-		clearAll();
-		sprintf(buf, "%s", WiFi.localIP().toString().c_str());
-		writeString(buf);
-		delay(2000);
+	if (!burn_in) {
+		writeString("CONNECTING");
+		if (setupWebServer()) {
+			//configTime(TIMEZONE, 0, NTPServer1, NTPServer2);
+			char buf[24];
+			clearAll();
+			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
+			writeString(buf);
+			delay(2000);
+		}//if
 	}//if
 #endif
 	/*
@@ -1067,6 +1079,13 @@ void setup() {
 	_settings.cycle = 0;
 	_brightness = 4;
 	*/
+	// burn-in use
+	if (burn_in) {
+		_settings.brightness = 4;
+		_settings.cycle = 4;
+		_settings.options = OPT_TOUPPER;
+		_settings.options |= DISP_FLIP;
+	}//if
 	//resetConfig();
 	//saveConfig();
 	//_input = 0x04;
