@@ -13,8 +13,13 @@
  platformio is used to build
  relies on Arduino AutoConnect library by Hieromon
  */
-// c230301 add support for vertical numerics
-// c230301 change "glow" transition to "drip"
+// 2.01
+// c2303 add support for vertical numerics
+// c2303 change "glow" transition to "drip"
+// 2.02
+// c2303 introduce "flash" transition
+// c2303 add option to cycle through all transaction modes one after another
+// c2304 config time with new time zone immediately after change
 //
 // c230501 start v202
 //         merge / simplify mask vairables
@@ -67,7 +72,8 @@ uint8_t _brightness = 4;
 #define DISP_SHIFT   		2
 #define DISP_DRIP    		3
 #define DISP_FLIP    		4
-#define DISP_SPIN    		5
+#define DISP_FLASH   		5
+#define DISP_SPIN    		6		// always make spin last
 #define DISP_CLEAR			(1<<3)
 #define DISP_UPPERCASE		(1<<4)
 #define DISP_REENTRANT		(1<<5)
@@ -77,6 +83,7 @@ uint8_t _brightness = 4;
 #define OPT_ROTATED	(1<<3)
 #define OPT_TOUPPER (1<<4)
 #define OPT_XFONT   (1<<5)
+#define OPT_MTRANS  (1<<6)
 
 static struct {
 	char text[9][25];
@@ -85,12 +92,13 @@ static struct {
 	int8_t timezone;
 	int8_t brightness;			// lower 4 bit used
 	uint8_t cycle;				// seconds to cycle to next content, 0 means no cycling
-	uint8_t options;			// BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font
+	// options BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font, BIT6 rotate transition
+	uint8_t options;			
 	char reserved[7];
 } _settings;
 
 
-static uint8_t _next_transition = 0;
+//static uint8_t _next_transition = 0;
 static uint8_t _segment_limit = 0;
 
 static char     _chr_buf[50];
@@ -112,6 +120,7 @@ static uint8_t _input = 2;
 static int8_t _mode = -1;
 static uint16_t _countdown = 0;
 static time_t _countfrom = 0;
+static int8_t _dbl_on = -1;
 
 //________________________________________________________________________________
 void scan() {
@@ -221,6 +230,7 @@ void scan() {
 	REG_WRITE(GPIO_ENABLE1_REG, font);
 #endif
 	on = _onOff[_chr_buf[d+_excess_shift]];
+	if (_dbl_on == d) on <<= 2;
 #ifdef ENABLE_154
 	if (digit > 7) {
 		on += (on >> 1);
@@ -270,11 +280,26 @@ void writeAscii(uint8_t d, uint8_t v, uint16_t opt=0) {
 uint8_t writeString(const char *s, uint16_t opt=0) {
 	static char _last_string[64]="";
 	static uint16_t _last_opt=0;
+	static uint8_t _last_transition=0;
 
+	/*
 	if (_next_transition) {
 		opt &= 0xfff8;
 		opt |= _next_transition;
 		_next_transition = 0;
+	}//if
+	*/
+	if (opt&DISP_FORCE) {
+		opt &= 0xfff8;
+		if (_settings.options & OPT_MTRANS) {
+			_last_transition++;
+			opt |= _last_transition;
+			if (_last_transition > DISP_SPIN)
+				_last_transition = 0;
+		}//if
+		else {
+			opt |= _settings.options&0x07;
+		}//else
 	}//if
 
 	if (opt&DISP_CLEAR) clearAll();
@@ -385,6 +410,68 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 					delay(30);
 				}//for
 				_segment_limit = 0;
+			}
+			break;
+		case DISP_FLASH:
+			{
+				uint8_t limit = strlen(s);
+				static uint8_t mix_map[] = {
+#if NUM_OF_DIGITS > 12
+					3, 19, 12, 1, 20, 4, 23, 0, 21, 13, 7, 22, 8, 17, 14, 9, 11, 6, 16, 2, 15, 5, 10, 18,
+#else
+					3, 1, 4, 0, 7, 8, 9, 11, 6, 2, 5, 10,
+#endif
+				};
+				for (uint8_t i=0;i<NUM_OF_DIGITS;i++) {
+					uint8_t j = mix_map[(i+s[0])%NUM_OF_DIGITS];
+					if (_chr_buf[j] != ' ') {
+						if (j < limit && s[j] > ' ') {
+							writeAscii(j, s[j], opt);
+							_dbl_on = j;
+							delay(50);
+							_dbl_on = -1;
+							delay(20);
+						}//if
+						else {
+							_dbl_on = j;
+							delay(50);
+							_dbl_on = -1;
+							delay(20);
+							writeAscii(j, ' ', opt);
+						}//else
+					}//if
+				}//for
+				for (uint8_t i=0;i<NUM_OF_DIGITS;i++) {
+					uint8_t j = mix_map[(i+s[0])%NUM_OF_DIGITS];
+					if (j < limit && s[j] > ' ' && _chr_buf[j] == ' ') {
+						writeAscii(j, s[j], opt);
+						_dbl_on = j;
+						delay(50);
+						_dbl_on = -1;
+						delay(20);
+					}//if
+				}//for
+				/*
+				for (uint8_t i=0;i<NUM_OF_DIGITS;i++) {
+					uint8_t j = mix_map[(i+s[0])%NUM_OF_DIGITS];
+					if (j < limit && s[j] > ' ') {
+						writeAscii(j, s[j], opt);
+						_dbl_on = j;
+						delay(50);
+						_dbl_on = -1;
+						delay(20);
+					}//if
+					else {
+						if (_chr_buf[j] != ' ') {
+							_dbl_on = j
+							delay(50);
+							_dbl_on = -1;
+							delay(20);
+							writeAscii(j, ' ', opt);
+						}//if
+					}//else
+				}//for
+				*/
 			}
 			break;
 		default:
@@ -618,13 +705,16 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <input type='radio' name='transition' value=2 %s> Shift\
 <input type='radio' name='transition' value=3 %s> Drip\
 <input type='radio' name='transition' value=4 %s> Flip\
-<input type='radio' name='transition' value=5 %s> Spin\
+<input type='radio' name='transition' value=5 %s> Flash\
+<input type='radio' name='transition' value=6 %s> Spin\
 </p>\
 <p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>\
 <p>Bright: <input type='range' name='brightness' min=0 max=7 value=%d>\
  Rotate: <input type='checkbox' name='optRotate' %s></p>\
 All Caps: <input type='checkbox' name='optToUpper' %s>\
-  Aurebesh: <input type='checkbox' name='optXfont' %s></p>\
+  Aurebesh: <input type='checkbox' name='optXfont' %s>\
+  All Transitions: <input type='checkbox' name='optMtrans' %s>\
+  </p>\
 <p>Time Zone (-11..14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d>\
 &nbsp;<label id='suggest_tz'></label></p>\
 <input type='submit' value='Save Configuration'>\
@@ -689,11 +779,13 @@ _settings.use[8]==30 ? "checked" : "",
 (_settings.options&0x07) == 3 ? "checked" : "",
 (_settings.options&0x07) == 4 ? "checked" : "",
 (_settings.options&0x07) == 5 ? "checked" : "",
+(_settings.options&0x07) == 6 ? "checked" : "",
 _settings.cycle,
 _settings.brightness, 
 _settings.options & OPT_ROTATED ? "checked" : "", 
 _settings.options & OPT_TOUPPER ? "checked" : "", 
 _settings.options & OPT_XFONT   ? "checked" : "", 
+_settings.options & OPT_MTRANS  ? "checked" : "", 
 _settings.timezone,
 VERSION
 );
@@ -772,7 +864,15 @@ void handleForm() {
 	else _settings.options &= ~OPT_TOUPPER;
 	if (server.arg("optXfont")!= "") _settings.options |= OPT_XFONT;
 	else _settings.options &= ~OPT_XFONT;
-	if (server.arg("timezone")!= "") _settings.timezone = atoi(server.arg("timezone").c_str());
+	if (server.arg("optMtrans")!= "") _settings.options |= OPT_MTRANS;
+	else _settings.options &= ~OPT_MTRANS;
+	if (server.arg("timezone")!= "") {
+		int8_t new_tz = atoi(server.arg("timezone").c_str());
+		if (_settings.timezone != new_tz) {
+			_settings.timezone = new_tz;
+			configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+		}//if
+	}//if
 
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
@@ -932,7 +1032,7 @@ void showMessage(const char *sp) {
 	char out2[48] = "";
 	uint16_t opt = DISP_CLEAR|DISP_FORCE;
 	_input = 0x04;
-	_next_transition = _settings.options&0x07;
+	//_next_transition = _settings.options&0x07;
 	macroSub(&opt, out1, sp);
 	strftime(out2, sizeof(out2), out1, _tm);
 	writeString(out2, opt);
@@ -958,7 +1058,7 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 }
 
 //________________________________________________________________________________
-void showTime(uint8_t format) {
+void showTime(uint8_t format, uint8_t opt=0) {
 	char content[48] = "";
 	char buf[48] = "";
 	uint8_t pos = 0;
@@ -969,10 +1069,10 @@ void showTime(uint8_t format) {
 		_countdown--;
 		format = 8;
 	}//if
-	uint16_t use_opt = 0;
+	uint16_t use_opt = opt;
 	char *cp = _settings.text[format];
 
-	if (_settings.options&OPT_TOUPPER) use_opt = DISP_UPPERCASE;
+	if (_settings.options&OPT_TOUPPER) use_opt |= DISP_UPPERCASE;
 
 	macroSub(&use_opt, content, cp);
 	strftime(buf, sizeof(buf), content, _tm);
@@ -1074,10 +1174,10 @@ void setup() {
 	//saveConfig();
 	//_input = 0x04;
 	if (burn_in) {
-		_settings.brightness = 4;
+		_brightness = 7;
 		_settings.cycle = 4;
 		_settings.options = OPT_TOUPPER;
-		_settings.options |= DISP_FLIP;
+		_settings.options |= DISP_FLASH;
 	}//if
 }
 static int _count = 0;
@@ -1087,6 +1187,7 @@ void loop() {
 	static uint32_t save_time = 0;
 	static uint32_t stay_in_3_until = 0;
 	uint32_t current_time = millis();
+	uint8_t opt = 0;
 
 	if (digitalRead(_BT2) == LOW) {
 		while (digitalRead(_BT2) == LOW) {			// wait for key release
@@ -1119,7 +1220,8 @@ void loop() {
 			if (current_time > stay_in_3_until) {
 				stay_in_3_until = 0;
 				saveConfig();
-				_next_transition = _settings.options&0x07;		// force transition
+				//_next_transition = _settings.options&0x07;		// force transition
+				opt |= DISP_FORCE;
 				cycle = _settings.cycle;
 			}//if
 			else {
@@ -1131,7 +1233,7 @@ void loop() {
 	if (_input == 3) stay_in_3_until = millis() + 1000;
 	if (_input & 0x03) current_time += 1000;		// force immediate action
 
-	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-DRIP", "-FLIP", "-SPIN", };
+	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-DRIP", "-FLIP", "-FLASH", "-SPIN", };
 	switch (_input) {
 		case 1: // increment countdown minutes
 			if (!_settings.use[8]) _settings.use[8] = 1;
@@ -1152,8 +1254,9 @@ void loop() {
 					if (check==_mode) _settings.use[0] = 'o';
 				}//while
 				cycle = _settings.cycle;
-				_next_transition = _settings.options&0x07;
+				//_next_transition = _settings.options&0x07;
 			}//else
+			opt |= DISP_FORCE;
 			}
 			break;
 		case 3: // long pressed button 2
@@ -1180,7 +1283,7 @@ void loop() {
 		// every second we do this
 		save_time = current_time;
 		if (!_input) {	// normal mode, check to automatic cycling of contents
-			showTime(_mode);
+			showTime(_mode, opt);
 			if (cycle) {
 				cycle--;
 			}//if
@@ -1188,7 +1291,7 @@ void loop() {
 				if (_settings.cycle && !_countdown) {		// advance content, set timer for next advance
 					_input = 2;
 					cycle = _settings.cycle;
-					_next_transition = _settings.options&0x07;
+					//_next_transition = _settings.options&0x07;
 				}//if
 			}//else
 		}//if
