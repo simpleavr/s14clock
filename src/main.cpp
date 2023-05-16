@@ -23,7 +23,7 @@
 //         this is done by partial charliplexing the led modules
 // c230504 io pin 18 always leaks (looks like S2 chips problem) and introduce ghosting, 
 //         avoid turning on digits for blanks to make it not / less visible
-//#define USE_WIFI			// comment out to test display only
+#define USE_WIFI			// comment out to test display only
 
 
 #include <WiFi.h>
@@ -44,9 +44,9 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
 //#include "ver1.h"
-//#include "ver2.h"
+#include "ver2.h"
 //#include "ver2l.h"
-#include "ver3.h"
+//#include "ver3.h"
 
 #define VERSION "HW2.0 FW2.02"
 
@@ -1041,17 +1041,28 @@ void setup() {
 	delay(400);
 	clearAll();
 	writeString(VERSION);
-	delay(2000);
+	uint8_t burn_in = 0;
+	uint32_t current_time = millis();
+	while ((millis() - current_time) < 2000) {
+		if (digitalRead(_BT2) == LOW) {
+			while (digitalRead(_BT2) == LOW) {			// wait for key release
+				delay(10);
+			}//while
+			burn_in = 1;
+			writeString("BURN IN TEST");
+		}//if
+	}//while
 	clearAll();
 #ifdef USE_WIFI
-	writeString("CONNECTING");
-	if (setupWebServer()) {
-		//configTime(TIMEZONE, 0, NTPServer1, NTPServer2);
-		char buf[24];
-		clearAll();
-		sprintf(buf, "%s", WiFi.localIP().toString().c_str());
-		writeString(buf);
-		delay(2000);
+	if (!burn_in) {
+		writeString("CONNECTING");
+		if (setupWebServer()) {
+			char buf[24];
+			clearAll();
+			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
+			writeString(buf);
+			delay(2000);
+		}//if
 	}//if
 #else
 	writeString("NO WIFI", DISP_CLEAR);
@@ -1062,22 +1073,12 @@ void setup() {
 	//resetConfig();
 	//saveConfig();
 	//_input = 0x04;
-	//writeString("#x#1012345ABCXYZ", DISP_CLEAR);
-	//_settings.brightness = 7;
-	//_settings.cycle = 3;
-	//_settings.options = OPT_TOUPPER;
-	//_settings.options |= DISP_FLIP;
-	//_settings.options |= OPT_ROTATED;
-	while (0) {
-		//writeString("*+\\/O0                  ");
-		writeString("012345      6789AB      ");
-		delay(1000);
-		writeString("      012345      6789AB");
-		delay(1000);
-		clearAll();
-		_settings.options ^= OPT_ROTATED;
-		clearAll();
-	}//while
+	if (burn_in) {
+		_settings.brightness = 4;
+		_settings.cycle = 4;
+		_settings.options = OPT_TOUPPER;
+		_settings.options |= DISP_FLIP;
+	}//if
 }
 static int _count = 0;
 //________________________________________________________________________________
