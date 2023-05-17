@@ -66,7 +66,7 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 hw_timer_t *_timer=0;
 
 Preferences prefs;
-uint8_t _brightness = 4;
+uint8_t _brightness = 3;
 
 #define DISP_SHUTTER		1
 #define DISP_SHIFT   		2
@@ -120,7 +120,7 @@ static uint8_t _input = 2;
 static int8_t _mode = -1;
 static uint16_t _countdown = 0;
 static time_t _countfrom = 0;
-static int8_t _dbl_on = -1;
+static uint32_t _dbl_on = 0;
 
 //________________________________________________________________________________
 void scan() {
@@ -230,10 +230,10 @@ void scan() {
 	REG_WRITE(GPIO_ENABLE1_REG, font);
 #endif
 	on = _onOff[_chr_buf[d+_excess_shift]];
-	if (_dbl_on == d) on <<= 2;
+	if (_dbl_on & (1<<d)) on <<= 4;
 #ifdef ENABLE_154
 	if (digit > 7) {
-		on += (on >> 1);
+		//on += (on >> 1);
 	}//if
 	else {
 		pinMode(digit_map[digit], OUTPUT);
@@ -241,9 +241,14 @@ void scan() {
 #else
 	// c230504 don't turn on digit if character is blank
 	if (on) pinMode(digit_map[digit], OUTPUT);
-	on += _brightness;		// potential to increase brightness by skipping blanks
 #endif
-	off = 8-_brightness;
+	//on += _brightness;		// potential to increase brightness by skipping blanks
+	//on += 8*_brightness;
+	on *= (_brightness+1);
+//#endif
+	//off = 8-_brightness;
+	if (!_dbl_on || !(_dbl_on & (1<<d)))
+		off = 32 - on;		// balance consistent brightness regardless of content
 }
 
 //________________________________________________________________________________
@@ -414,6 +419,8 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			break;
 		case DISP_FLASH:
 			{
+				//uint8_t sav_brightness = _brightness;
+				//_brightness = 0;
 				uint8_t limit = strlen(s);
 				static uint8_t mix_map[] = {
 #if NUM_OF_DIGITS > 12
@@ -427,15 +434,15 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 					if (_chr_buf[j] != ' ') {
 						if (j < limit && s[j] > ' ') {
 							writeAscii(j, s[j], opt);
-							_dbl_on = j;
+							_dbl_on = 1<<j;
 							delay(50);
-							_dbl_on = -1;
+							_dbl_on = 0;
 							delay(20);
 						}//if
 						else {
-							_dbl_on = j;
+							_dbl_on = 1<<j;
 							delay(50);
-							_dbl_on = -1;
+							_dbl_on = 0;
 							delay(20);
 							writeAscii(j, ' ', opt);
 						}//else
@@ -445,12 +452,13 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 					uint8_t j = mix_map[(i+s[0])%NUM_OF_DIGITS];
 					if (j < limit && s[j] > ' ' && _chr_buf[j] == ' ') {
 						writeAscii(j, s[j], opt);
-						_dbl_on = j;
+						_dbl_on = 1<<j;
 						delay(50);
-						_dbl_on = -1;
+						_dbl_on = 0;
 						delay(20);
 					}//if
 				}//for
+				//_brightness = sav_brightness;
 				/*
 				for (uint8_t i=0;i<NUM_OF_DIGITS;i++) {
 					uint8_t j = mix_map[(i+s[0])%NUM_OF_DIGITS];
@@ -513,6 +521,35 @@ void setupDisplay() {
 	io_cfg.intr_type = GPIO_INTR_DISABLE;
 	gpio_config(&io_cfg);
 
+	/*
+	for (uint8_t i=0;i<12;i++) {
+		pinMode(s[i], INPUT_PULLDOWN);
+		//digitalWrite(s[i], HIGH);
+	}//for
+	"ver2", 
+	[ 10, 12, 13, 14, 16,  8, 11, 35, 38, 37, 40, 39,],
+	[ 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  7,  6,  9, 15,]);	# segment S11 and S13 switched in schematic
+	"ver2l", 
+	[ 34, 16, 17, 18, 21, 33, 36, 35, 37, 38, 39, 40,],
+	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10,  7,  6, 12,  6,]);
+	"ver3", 
+	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
+	[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
+	*/
+	// test segment pins below, test low means on
+	//pinMode(17, INPUT_PULLUP);
+	//if (digitalRead(17) == LOW) v2 = 1;
+
+
+	//io_cfg.pin_bit_mask = all_maskA | ((uint64_t) all_maskB << 32);
+	io_cfg.pin_bit_mask = (((uint64_t) all_mask >> 23) << 32) | (all_mask & 0x00ffffff);
+	io_cfg.mode = GPIO_MODE_INPUT_OUTPUT;
+	io_cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+	io_cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+	io_cfg.intr_type = GPIO_INTR_DISABLE;
+	gpio_config(&io_cfg);
+
+
 	//_settings.brightness = 4;
 	/*______ direct multiplexing
 	for (uint8_t i=1;i<=18;i++) pinMode(i, OUTPUT);
@@ -557,7 +594,7 @@ void resetConfig() {
 	_settings.use[4] = _settings.use[5] = _settings.use[6] = _settings.use[7] = ' ';
 	_settings.use[8] = (char) 1;
 	_settings.cycle = 0;
-	_settings.brightness = 4;
+	_settings.brightness = 2;
 	_settings.options = OPT_TOUPPER;
 	//_settings.options &= ~OPT_ROTATED;
 	_settings.timezone = -4;
@@ -565,6 +602,7 @@ void resetConfig() {
 //________________________________________________________________________________
 void loadConfig() {
 	_brightness = _settings.brightness;
+	_brightness &= 0x03;
 	/*
 	if (_settings.options&OPT_XFONT) {
 		_font  = (_settings.options&OPT_ROTATED) ? aurebeshB : aurebeshA;
@@ -1134,6 +1172,7 @@ LEDBar _timeBar;
 
 //________________________________________________________________________________
 void setup() {
+
 	setupDisplay();
 	writeString("OOOOOOOOOOOOOOOOOOOOOOOO");
 	delay(400);
@@ -1174,10 +1213,12 @@ void setup() {
 	//saveConfig();
 	//_input = 0x04;
 	if (burn_in) {
-		_brightness = 7;
+		_brightness = 3;
 		_settings.cycle = 4;
 		_settings.options = OPT_TOUPPER;
+		//_settings.options |= DISP_FLIP;
 		_settings.options |= DISP_FLASH;
+		//_settings.options |= OPT_MTRANS;
 	}//if
 }
 static int _count = 0;
