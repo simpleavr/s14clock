@@ -85,10 +85,10 @@
       <p>Select your product</p>
       <ul class="radios">
         <li>
-          <label><input type="radio" name="type" value="24_201" /> S14Clock 24 Characters (Firmware 2.01)</label>
+          <label><input type="radio" name="type" value="24" /> S14Clock 24 Characters (Firmware 2.01)</label>
         </li>
         <li>
-          <label><input type="radio" name="type" value="12_201" /> S14Clock 12 Characters (Firmware 2.01)</label>
+          <label><input type="radio" name="type" value="12" /> S14Clock 12 Characters (Firmware 2.01)</label>
         </li>
       </ul>
       <p class="button-row" align="center">
@@ -105,7 +105,7 @@
       document.querySelectorAll('input[name="type"]').forEach(radio =>
         radio.addEventListener("change", () => {
           const button = document.querySelector('esp-web-install-button');
-          button.manifest = `./manifest_${radio.value}.json`;
+          button.manifest = `./bin/manifest_${radio.value}.json`;
           button.classList.remove('invisible');
         }
       ));
