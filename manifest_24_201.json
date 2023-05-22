@@ -4,10 +4,11 @@
   "builds": [
     {
       "chipFamily": "ESP32-S2",
+	  "new_install_prompt_erase": true,
       "parts": [
-        { "path": "releases/tag/v2.01/bootloader.bin", "offset": 4096 },
-        { "path": "releases/tag/v2.01/partitions.bin", "offset": 32768 },
-        { "path": "releases/tag/v2.01/firmware24_201.bin", "offset": 65536 }
+        { "path": "releases/download/v2.01/bootloader.bin", "offset": 4096 },
+        { "path": "releases/download/v2.01/partitions.bin", "offset": 32768 },
+        { "path": "releases/download/v2.01/firmware24_201.bin", "offset": 65536 }
       ]
     }
   ]
