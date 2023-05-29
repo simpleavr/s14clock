@@ -23,7 +23,15 @@ Package is built under windows 10 with platformio
 - pio lib install AutoConnect
 - pio run --target upload
 
-V2.1 firmware (2020-03-20)
+V2.01 firmware (2023-03-20)
 - replace "glow" transition with "drip" transition
 - enchange shift transition
+
+V2.02 firmware (2023-05-29)
+- introduce "flash" transition
+- add option to cycle through all transaction modes one after another
+- config time with new time zone immediately after change
+- autodetect v2, v2l, v3 hardware
+- substitute underscore with space for ad-hoc messages
+- ad-hoc messages now follows transition in
 

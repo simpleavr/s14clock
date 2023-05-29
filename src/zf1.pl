@@ -1,5 +1,6 @@
 #!/bin/perl -w
 use strict;
+use feature 'state';
 
 #    ___ a
 #  f|\|/|b (hjk)
@@ -148,26 +149,28 @@ _END
 
 # aurebesh (starwars) alphabet
 
-sub gen_file { my ($fn, $dg, $sg) = @_;
+sub gen_file { 
+	my ($fn, $dg, $sg) = @_;
 
-	open O, ">$fn.h" or die "cannot create file $fn.h\n";
 	my @use_dg = @{$dg};
-	$fn =~ /3/ and @use_dg = (@{$dg}[0..11], @{$sg}[0..11]);
+	#$fn =~ /3/ and @use_dg = (@{$dg}[0..11], @{$sg}[0..11]);
+	# v3 led arranged as led1, led3, led2, led4
+	$fn =~ /3/ and @use_dg = (@{$dg}[0..5], @{$sg}[0..5], @{$dg}[6..11], @{$sg}[6..11]);
 
-	print O "const uint8_t digit_map[]   = { ", join ", ", @use_dg, " };\n";
-	print O "const uint8_t digit_map_r[]   = { ", join ", ", reverse(@use_dg), " };\n\n";
+	print "const uint8_t digit_map_${fn}[]   = { ", join ", ", @use_dg, " };\n";
+	print "const uint8_t digit_map_r_${fn}[]   = { ", join ", ", reverse(@use_dg), " };\n\n";
 
-	if ($fn =~ m/2l/) {		# l means long bar, v2l use 74HC154, v3l use charliplexing
-		print O "#define ENABLE_154	15\n";
-		print O "#define NUM_OF_DIGITS	24\n";
-	}
-	else {
-		printf O "#define NUM_OF_DIGITS	%d\n", $#use_dg+1;
-	}
+	#if ($fn =~ m/2l/) {		# l means long bar, v2l use 74HC154, v3l use charliplexing
+	#	print "#define ENABLE_154	15\n";
+	#	print "#define NUM_OF_DIGITS	24\n";
+	#}
+	#else {
+	#	printf "#define NUM_OF_DIGITS	%d\n", $#use_dg+1;
+	#}
 
 	my ($repeat, $suf) = (1, "");
 	$fn =~ /3/ and do {
-		print O "#define CHARLIE	12\n";
+		#print "#define CHARLIE	12\n";
 		$repeat++;
 	};
 
@@ -181,51 +184,53 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 			push @spin_mask, $mask;
 		}
 
-		#$bit16 and printf O "#define BIT16_SEG	1\n";
-		printf O "const uint32_t segment_mask$suf = 0x%08x;\n", (($mask >> 32)<<23) | ($mask&0x00ffffff);
-		#printf O "const uint32_t segment_maskA$suf = 0x%08x;\n", $mask & 0xffffffff;
-		#printf O "const uint32_t segment_maskB$suf = 0x%08x;\n", $mask >> 32;
+		#$bit16 and printf "#define BIT16_SEG	1\n";
+		printf "const uint32_t segment_mask_$fn$suf = 0x%08x;\n", (($mask >> 32)<<23) | ($mask&0x00ffffff);
+		#printf "const uint32_t segment_maskA$suf = 0x%08x;\n", $mask & 0xffffffff;
+		#printf "const uint32_t segment_maskB$suf = 0x%08x;\n", $mask >> 32;
 
 		for my $b (@{$dg}) {
 			$mask |= 1<<$b;
 		}
 		$suf or do {
-			printf O "const uint32_t all_mask = 0x%08x;\n", (($mask >> 32)<<23) | ($mask&0x00ffffff);
-			#printf O "const uint32_t all_maskA = 0x%08x;\n", $mask & 0xffffffff;
-			#printf O "const uint32_t all_maskB = 0x%08x;\n", $mask >> 32;
+			printf "const uint32_t all_mask_$fn = 0x%08x;\n", (($mask >> 32)<<23) | ($mask&0x00ffffff);
+			#printf "const uint32_t all_maskA = 0x%08x;\n", $mask & 0xffffffff;
+			#printf "const uint32_t all_maskB = 0x%08x;\n", $mask >> 32;
 		};
-		print O "const uint32_t spin_mask${suf}[] = {\n";
+		print "const uint32_t spin_mask_$fn${suf}[] = {\n";
 		my $cnt=0;
 		for (@spin_mask) {
-			printf O "0x%08x, ", (($_ >> 32)<<23) | ($_&0x00ffffff);
-			++$cnt % 4 or print O "\n";
+			printf "0x%08x, ", (($_ >> 32)<<23) | ($_&0x00ffffff);
+			++$cnt % 4 or print "\n";
 		}
-		print O "};\n";
+		print "};\n";
 
 =pod
-		print O "const uint32_t spin_maskA${suf}[] = {\n";
+		print "const uint32_t spin_maskA${suf}[] = {\n";
 		$cnt=0;
 		for (@spin_mask) {
-			printf O "0x%08x, ", $_ & 0xffffffff;
-			++$cnt % 4 or print O "\n";
+			printf "0x%08x, ", $_ & 0xffffffff;
+			++$cnt % 4 or print "\n";
 		}
-		print O "};\n";
+		print "};\n";
 
-		print O "const uint32_t spin_maskB${suf}[] = {\n";
+		print "const uint32_t spin_maskB${suf}[] = {\n";
 		$cnt=0;
 		for (@spin_mask) {
-			printf O "0x%08x, ", $_ >> 32;
-			++$cnt % 4 or print O "\n";
+			printf "0x%08x, ", $_ >> 32;
+			++$cnt % 4 or print "\n";
 		}
-		print O "};\n";
+		print "};\n";
 =cut
 
 
 		my @brightness = ();
 
+		state $genOnOff = 0;
+
 		my ($a0, $a1, $a2) = (
-			"const uint32_t asciiA${suf}[] = {\n",
-			"const uint32_t asciiB${suf}[] = {\n",
+			"const uint32_t asciiA_$fn${suf}[] = {\n",
+			"const uint32_t asciiB_$fn${suf}[] = {\n",
 			"const uint8_t asciiOnOff${suf}[] = {\n",);
 
 		#for my $raw ($orig, $full) {
@@ -245,7 +250,7 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 					$row[$i++] .= $e;
 				}
 				++$c == 5 and do {
-					#print O "($row[1])\n";
+					#print "($row[1])\n";
 					for my $i (0..15) {
 						my @seg = split '', $row[$i];
 						my ($a, $b, $c, $cn) = (0, 0, 0, 0);
@@ -258,8 +263,8 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 							$c++;
 						}
 						push @brightness, $cn;
-						#$a0 .= sprintf O "0x%04x, ", $a;
-						#$a1 .= sprintf O "0x%04x, ", $b;
+						#$a0 .= sprintf "0x%04x, ", $a;
+						#$a1 .= sprintf "0x%04x, ", $b;
 						$a0 .= sprintf "0x%08x, ", ($a & 0xffffff) | (($a >> 33) << 24);
 						$a1 .= sprintf "0x%08x, ", ($b & 0xffffff) | (($b >> 33) << 24);
 						$i == 7 and do {
@@ -274,23 +279,24 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 			}
 			$a0 .= "};\n\n";
 			$a1 .= "};\n\n";
-			print O $a0, $a1;
+			print $a0, $a1;
 
-			$suf or do {
-				print O $a2;
+			#$suf or do {
+			$genOnOff or do {
+				print $a2;
 				for (@brightness) {
-					printf O "0x%02x, ", $_;
-					++$c & 0x7 or print O "\n";
+					printf "0x%02x, ", $_;
+					++$c & 0x7 or print "\n";
 				}
-				print O "};\n\n";
+				print "};\n\n";
 			};
+			$genOnOff++;
 
 		}
 		$repeat--;
 		($sg, $dg) = ($dg, $sg);
 		$suf = "_c";
 	}
-	close O;
 }
 
 #my @digits = (  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, );	# ver1
@@ -300,15 +306,14 @@ sub gen_file { my ($fn, $dg, $sg) = @_;
 #my @p = ( 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  9,  6,  7, 15, );		# ver2
 #my @p = ( 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10, 12,  6,  7,  6, );		# ver2l
 
-gen_file("ver1", 
-	[  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,],					# digits 1-12
-	[ 13, 14, 15, 16, 17, 18, 21, 33, 34, 35, 36, 39, 38, 37, 38,]);	# segments 0-14
-
-gen_file("ver2", 
+#gen_file("v1", 
+#	[  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12,],					# digits 1-12
+#	[ 13, 14, 15, 16, 17, 18, 21, 33, 34, 35, 36, 39, 38, 37, 38,]);	# segments 0-14
+gen_file("v2", 
 	[ 10, 12, 13, 14, 16,  8, 11, 35, 38, 37, 40, 39,],
 	[ 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  7,  6,  9, 15,]);	# segment S11 and S13 switched in schematic
 
-gen_file("ver2l", 
+gen_file("v2l", 
 	[ 34, 16, 17, 18, 21, 33, 36, 35, 37, 38, 39, 40,],
 	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10,  7,  6, 12,  6,]);
 
@@ -316,11 +321,11 @@ gen_file("ver2l",
 #	[ 34, 16, 17, 18, 21, 33, 36, 35, 38, 37, 40, 39,],
 #	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10, 12,  6,  7, 15,]);
 
-gen_file("ver3", 
+gen_file("v3", 
 	#[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
-	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
-	[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
+	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  11, 9, 9, ],
+	[ 33,  3,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2,  11, 9, 9, ]
 	#[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5, ],
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  9, 11,  2, 11,]
 	#[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2,],

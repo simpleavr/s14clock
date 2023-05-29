@@ -13,9 +13,24 @@
  platformio is used to build
  relies on Arduino AutoConnect library by Hieromon
  */
+// 2.01
 // c2303 add support for vertical numerics
 // c2303 change "glow" transition to "drip"
+// 2.02
+// c2303 introduce "flash" transition
+// c2303 add option to cycle through all transaction modes one after another
+// c2304 config time with new time zone immediately after change
+// c2305 autodetect v2, v2l, v3 hardware
+// c2305 substitute underscore with space for ad-hoc messages
+// c2305 ad-hoc messages now follows transition in
 //
+// c230501 start v202
+//         merge / simplify mask vairables
+//         use direct ESP32 register to setup all IO pins in setupDisply(), no more hard resets needed after flashing
+//         introduce version 3 hardware, which eliminates use of 74HC154D (4 to 16 line decoder)
+//         this is done by partial charliplexing the led modules
+// c230504 io pin 18 always leaks (looks like S2 chips problem) and introduce ghosting, 
+//         avoid turning on digits for blanks to make it not / less visible
 #define USE_WIFI			// comment out to test display only
 
 
@@ -36,11 +51,11 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 
 #include "stdint.h"
 // available hardware versions, headers containing IO mapping
+#include "map.h"
 //#include "ver1.h"
-#include "ver2.h"
+//#include "ver2.h"
 //#include "ver2l.h"
-
-#define VERSION "HW2.0 FW2.01"
+//#include "ver3.h"
 
 #define _LED		LED_BUILTIN
 #define _BT2		0
@@ -53,13 +68,32 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 hw_timer_t *_timer=0;
 
 Preferences prefs;
-uint8_t _brightness = 4;
+uint8_t _brightness = 3;
+
+//____ default hardware is v3-24 character version
+char _version[14] = "FW2.02 HW3  ";
+uint8_t _num_of_digits = 24;
+uint8_t _enable_154 = 0;
+uint8_t _charlie = 12;
+//uint8_t _detected = 0;
+
+const uint8_t *digit_map = digit_map_v3;
+const uint8_t *digit_map_r = digit_map_r_v3;
+
+uint32_t segment_mask = segment_mask_v3;
+uint32_t all_mask = all_mask_v3;
+const uint32_t *spin_mask = spin_mask_v3;
+const uint32_t *asciiA = asciiA_v3;
+const uint32_t *asciiB = asciiB_v3;
+const uint32_t *asciiA_c = asciiA_v3_c;
+const uint32_t *asciiB_c = asciiB_v3_c;
 
 #define DISP_SHUTTER		1
 #define DISP_SHIFT   		2
 #define DISP_DRIP    		3
 #define DISP_FLIP    		4
-#define DISP_SPIN    		5
+#define DISP_FLASH   		5
+#define DISP_SPIN    		6		// always make spin last
 #define DISP_CLEAR			(1<<3)
 #define DISP_UPPERCASE		(1<<4)
 #define DISP_REENTRANT		(1<<5)
@@ -69,6 +103,7 @@ uint8_t _brightness = 4;
 #define OPT_ROTATED	(1<<3)
 #define OPT_TOUPPER (1<<4)
 #define OPT_XFONT   (1<<5)
+#define OPT_MTRANS  (1<<6)
 
 static struct {
 	char text[9][25];
@@ -77,15 +112,16 @@ static struct {
 	int8_t timezone;
 	int8_t brightness;			// lower 4 bit used
 	uint8_t cycle;				// seconds to cycle to next content, 0 means no cycling
-	uint8_t options;			// BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font
+	// options BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font, BIT6 rotate transition
+	uint8_t options;			
 	char reserved[7];
 } _settings;
 
 
-static uint8_t _next_transition = 0;
+//static uint8_t _next_transition = 0;
 static uint8_t _segment_limit = 0;
 
-static char     _chr_buf[50];
+static char     _chr_buf[50+24];
 static uint8_t  _excess = 0, _excess_shift = 0, _excess_release = 0;
 static unsigned _excess_cnt = 0;
 // segments io a, b, c...m/2, dp, digits are io 1 to 12
@@ -99,29 +135,21 @@ static unsigned _excess_cnt = 0;
 */
 static const uint32_t *_font = asciiA;
 static const uint8_t *_onOff = asciiOnOff;
-const uint16_t map154[] = 
-	{ 11<<5, 12<<5, 13<<5, 14<<5, 10<<5, 5<<5, 4<<5, 6<<5, 7<<5, 8<<5, 9<<5, 15<<5, 2<<5, 1<<5, 0, 3<<5 };
 
 static uint8_t _input = 2;
 static int8_t _mode = -1;
 static uint16_t _countdown = 0;
 static time_t _countfrom = 0;
+static uint32_t _dbl_on = 0;
 
 //________________________________________________________________________________
 void scan() {
-	//for (uint8_t d=0;d<12;d++) pinMode(d+1, INPUT);
-	//for (uint8_t s=0;s<14;s++) digitalWrite(seg_pins[s], LOW);
-	//delay(5);
 	// scan() is called at 40Khz, for 1/2 sec count to 20,000
 	if (++_excess_cnt > 5000) {
-		// 0..........b12345678901
-		// THIS IS A LONGER STRING
-		//
 		_excess_cnt = 0;
 		if (_excess_release) {				// done, we are just retaining last display content
-			_excess_release--;
-			if (!_excess_release)
-				_excess = _excess_shift = 0;
+			_excess_release  = _excess = _excess_shift = 0;
+			for (uint8_t i=_num_of_digits;i<(50+24);i++) _chr_buf[i] = ' ';
 		}//if
 		else {
 			if (_excess) {
@@ -141,111 +169,108 @@ void scan() {
 		on--;
 		return;
 	}//if
-#ifdef ENABLE_154
-	if (_settings.options&OPT_ROTATED) {
-		if (d > 15)
-			pinMode(digit_map_r[d-12], INPUT);
-		else
-			digitalWrite(ENABLE_154, HIGH);
+	if (_enable_154) {
+		if (_settings.options&OPT_ROTATED) {
+			if (d > 15)
+				pinMode(digit_map_r[d-12], INPUT);
+			else
+				digitalWrite(_enable_154, HIGH);
+		}//if
+		else {
+			if (d > 7)
+				digitalWrite(_enable_154, HIGH);
+			else
+				pinMode(digit_map[d], INPUT);
+		}//else
 	}//if
 	else {
-		if (d > 7)
-			digitalWrite(ENABLE_154, HIGH);
-		else
-			pinMode(digit_map[d], INPUT);
+		REG_WRITE(GPIO_OUT_REG, 0);
+		REG_WRITE(GPIO_ENABLE_REG, 0);
+		REG_WRITE(GPIO_OUT1_REG, 0);
+		REG_WRITE(GPIO_ENABLE1_REG, 0);
 	}//else
-#else
-	if (_settings.options&OPT_ROTATED) 
-		pinMode(digit_map_r[d], INPUT);		// turn off
-	else
-		pinMode(digit_map[d], INPUT);		// turn off
-#endif
 	if (off) {
 		off--;
 		return;
 	}//if
 
-	if (++d >= NUM_OF_DIGITS) d = 0;
-	uint8_t digit = (_settings.options&OPT_ROTATED) ? NUM_OF_DIGITS - d - 1 : d;
+	if (++d >= _num_of_digits) d = 0;
+	uint8_t digit = (_settings.options&OPT_ROTATED) ? _num_of_digits - d - 1 : d;
 
-#ifdef ENABLE_154
-	if (digit > 7) {
-		digitalWrite(ENABLE_154, HIGH);
-	}//if
-	else {
-		digitalWrite(digit_map[digit], LOW);
-		pinMode(digit_map[digit], INPUT);
-	}//if
-#else
-	digitalWrite(digit_map[digit], LOW);
-	pinMode(digit_map[digit], INPUT);
-#endif
-	//uint16_t cmp = 0x0001;
-	//const uint8_t *sp = (_settings.options&OPT_ROTATED) ?  seg_pins_r : seg_pins;
-	uint8_t num_segs = 0;
-	REG_WRITE(GPIO_OUT_W1TC_REG, segment_maskA);//0b001001101000001011111110);
-	REG_WRITE(GPIO_OUT1_W1TC_REG, segment_maskB);//0b00010110);
-#ifdef ENABLE_154
-	REG_WRITE(GPIO_OUT1_W1TC_REG, 0x1e0);
-	if (digit > 7) {
-		digitalWrite(ENABLE_154, LOW);
-		REG_WRITE(GPIO_OUT1_W1TS_REG, map154[digit-8]);
-	}//if
-#endif
-	uint32_t maskA = 0x00ffffff, maskB = 0x000003ff;
-	if (_segment_limit) {
-		maskA = spin_maskA[_segment_limit];
-		maskB = spin_maskB[_segment_limit];
-	}//if
-	REG_WRITE(GPIO_OUT_W1TS_REG, _font[_chr_buf[d+_excess_shift]] & maskA);
-	REG_WRITE(GPIO_OUT1_W1TS_REG, (_font[_chr_buf[d+_excess_shift]] >> 24) & maskB);
-	//num_segs = _onOff[_chr_buf[d+_excess_shift]];
-	on = _onOff[_chr_buf[d+_excess_shift]];
-	/*
-	for (uint8_t s=0;s<14;s++) {
-		if ((segs&cmp) && (!_segment_limit || (s<_segment_limit))) {
-			digitalWrite(sp[s], HIGH);
-			num_segs++;
+	if (_enable_154) {
+		if (digit > 7) {
+			digitalWrite(_enable_154, HIGH);
 		}//if
 		else {
-			digitalWrite(sp[s], LOW);
+			digitalWrite(digit_map[digit], LOW);
+			pinMode(digit_map[digit], INPUT);
+		}//if
+	}//if
+	uint32_t mask = segment_mask;
+	//if (_charlie && digit >= 12) mask = segment_mask_v3_c;
+	if (_charlie && (digit%12) >= 6) mask = segment_mask_v3_c;
+
+	REG_WRITE(GPIO_OUT_W1TC_REG, mask & 0x00ffffff);
+	REG_WRITE(GPIO_OUT1_W1TC_REG, mask >> 23);
+	const uint16_t map154[] = 
+		{ 11<<5, 12<<5, 13<<5, 14<<5, 10<<5, 5<<5, 4<<5, 6<<5, 7<<5, 8<<5, 9<<5, 15<<5, 2<<5, 1<<5, 0, 3<<5 };
+	if (_enable_154) {
+		REG_WRITE(GPIO_OUT1_W1TC_REG, 0x1e0);
+		if (digit > 7) {
+			digitalWrite(_enable_154, LOW);
+			REG_WRITE(GPIO_OUT1_W1TS_REG, map154[digit-8]);
+		}//if
+	}//if
+	if (_segment_limit) mask = spin_mask[_segment_limit];
+	if (_charlie) {
+		if (_settings.options&OPT_ROTATED)
+			//_font = digit >= 12 ? asciiB_v3_c : asciiB_v3;
+			_font = (digit%12) >= 6 ? asciiB_v3_c : asciiB_v3;
+		else
+			//_font = digit >= 12 ? asciiA_v3_c : asciiA_v3;
+			_font = (digit%12) >= 6 ? asciiA_v3_c : asciiA_v3;
+	}//if
+	if (!_enable_154) pinMode(digit_map[digit], INPUT);
+	uint32_t font = _font[_chr_buf[d+_excess_shift]];
+	font &= mask;
+	REG_WRITE(GPIO_OUT_W1TS_REG, font & 0x00ffffff);
+	if (!_enable_154) REG_WRITE(GPIO_ENABLE_REG, font & 0x00ffffff);
+	font >>= 23;
+	REG_WRITE(GPIO_OUT1_W1TS_REG, font);
+	if (!_enable_154) REG_WRITE(GPIO_ENABLE1_REG, font);
+	on = _onOff[_chr_buf[d+_excess_shift]];
+	if (_dbl_on & (1<<d)) on <<= 4;
+	if (_enable_154) {
+		if (digit > 7) {
+			//on += (on >> 1);
+		}//if
+		else {
+			pinMode(digit_map[digit], OUTPUT);
 		}//else
-		cmp <<= 1;
-	}//for
-	*/
-#ifdef ENABLE_154
-	if (digit > 7) {
-		on += (on >> 1);
 	}//if
 	else {
-		pinMode(digit_map[digit], OUTPUT);
+		// c230504 don't turn on digit if character is blank
+		if (on) pinMode(digit_map[digit], OUTPUT);
 	}//else
-#else
-	pinMode(digit_map[digit], OUTPUT);
-	on += _brightness;
-#endif
-	//digitalWrite(digit+1, LOW);
-	//if (s) pinMode(digit_map[digit], INPUT);		// turn off
-	/*
-	if (num_segs > 1) on += 2;
-	if (num_segs > 3) on += 2;
-	if (num_segs > 5) on += 2;
-	if (num_segs > 7) on += 2;
-	on += _brightness;
-	*/
-	off = 8-_brightness;
+	//on += _brightness;		// potential to increase brightness by skipping blanks
+	//on += 8*_brightness;
+	on *= (_brightness+1);
+//#endif
+	//off = 8-_brightness;
+	if (!_dbl_on || !(_dbl_on & (1<<d)))
+		off = 32 - on;		// balance consistent brightness regardless of content
 }
 
 //________________________________________________________________________________
 void clearAll() {
-	for (uint8_t i=0;i<50;i++) _chr_buf[i] = ' ';
+	for (uint8_t i=0;i<(50+24);i++) _chr_buf[i] = ' ';
 }
 
 //________________________________________________________________________________
 void writeAscii(uint8_t d, uint8_t v, uint16_t opt=0) {
 
-	d %= 24;
-	if (d >= (NUM_OF_DIGITS*2)) return;
+	d %= (_num_of_digits*2);
+	if (d >= (_num_of_digits*2)) return;
 
 	uint16_t cmp = 0x0001, segs = 0x0000;
 
@@ -270,11 +295,26 @@ void writeAscii(uint8_t d, uint8_t v, uint16_t opt=0) {
 uint8_t writeString(const char *s, uint16_t opt=0) {
 	static char _last_string[64]="";
 	static uint16_t _last_opt=0;
+	static uint8_t _last_transition=0;
 
+	/*
 	if (_next_transition) {
 		opt &= 0xfff8;
 		opt |= _next_transition;
 		_next_transition = 0;
+	}//if
+	*/
+	if (opt&DISP_FORCE) {
+		opt &= 0xfff8;
+		if (_settings.options & OPT_MTRANS) {
+			_last_transition++;
+			opt |= _last_transition;
+			if (_last_transition > DISP_SPIN)
+				_last_transition = 0;
+		}//if
+		else {
+			opt |= _settings.options&0x07;
+		}//else
 	}//if
 
 	if (opt&DISP_CLEAR) clearAll();
@@ -306,7 +346,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 		case DISP_SHIFT:
 			{
 				//clearAll();
-				uint8_t j=(NUM_OF_DIGITS-1);
+				uint8_t j=(_num_of_digits-1);
 				_last_string[j] = '\0';
 				const char *lp = _last_string;
 				while (j--) {
@@ -341,7 +381,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				uint8_t j=0;
 				while (*p) {
 					if (*p != ' ') {
-						for (uint8_t i=(NUM_OF_DIGITS-1);i>j;i--) {
+						for (uint8_t i=(_num_of_digits-1);i>j;i--) {
 							_chr_buf[i] = ' ';
 							delay(5);
 							writeAscii(i-1, *p, opt);
@@ -356,7 +396,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 		case DISP_FLIP:
 			{
 				for (char c='0';c<'Z';c++) {
-					for (uint8_t i=0;i<NUM_OF_DIGITS;i++) {
+					for (uint8_t i=0;i<_num_of_digits;i++) {
 						if (_last_string[i] > ' ') 
 							writeAscii(i, _last_string[i] > c ? _last_string[i] : c, opt);
 					}//for
@@ -387,6 +427,69 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				_segment_limit = 0;
 			}
 			break;
+		case DISP_FLASH:
+			{
+				//uint8_t sav_brightness = _brightness;
+				//_brightness = 0;
+				uint8_t limit = strlen(s);
+				static uint8_t mix_map[] = {
+					3, 1, 4, 0, 7, 8, 9, 11, 6, 2, 5, 10,
+					19, 12, 20, 23, 21, 13, 22, 17, 14, 16, 15, 18,
+				};
+					//3, 19, 12, 1, 20, 4, 23, 0, 21, 13, 7, 22, 8, 17, 14, 9, 11, 6, 16, 2, 15, 5, 10, 18,
+				for (uint8_t i=0;i<_num_of_digits;i++) {
+					uint8_t j = mix_map[(i+s[0])%_num_of_digits];
+					if (_chr_buf[j] != ' ') {
+						if (j < limit && s[j] > ' ') {
+							writeAscii(j, s[j], opt);
+							_dbl_on = 1<<j;
+							delay(50);
+							_dbl_on = 0;
+							delay(20);
+						}//if
+						else {
+							_dbl_on = 1<<j;
+							delay(50);
+							_dbl_on = 0;
+							delay(20);
+							writeAscii(j, ' ', opt);
+						}//else
+					}//if
+				}//for
+				for (uint8_t i=0;i<_num_of_digits;i++) {
+					uint8_t j = mix_map[(i+s[0])%_num_of_digits];
+					if (j < limit && s[j] > ' ' && _chr_buf[j] == ' ') {
+						writeAscii(j, s[j], opt);
+						_dbl_on = 1<<j;
+						delay(50);
+						_dbl_on = 0;
+						delay(20);
+					}//if
+				}//for
+				//_brightness = sav_brightness;
+				/*
+				for (uint8_t i=0;i<_num_of_digits;i++) {
+					uint8_t j = mix_map[(i+s[0])%_num_of_digits];
+					if (j < limit && s[j] > ' ') {
+						writeAscii(j, s[j], opt);
+						_dbl_on = j;
+						delay(50);
+						_dbl_on = -1;
+						delay(20);
+					}//if
+					else {
+						if (_chr_buf[j] != ' ') {
+							_dbl_on = j
+							delay(50);
+							_dbl_on = -1;
+							delay(20);
+							writeAscii(j, ' ', opt);
+						}//if
+					}//else
+				}//for
+				*/
+			}
+			break;
 		default:
 			break;
 	}//switch
@@ -395,8 +498,8 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 		strcpy(_last_string, s);
 		_last_opt = opt;
 		//________ for excessive characters, we shift them out
-		if (strlen(s) > NUM_OF_DIGITS) {
-			//_excess = (strlen(s) - NUM_OF_DIGITS);
+		if (strlen(s) > _num_of_digits) {
+			//_excess = (strlen(s) - _num_of_digits);
 			_excess = strlen(s);
 			_excess_shift = _excess_release = 0;
 			_excess_cnt = 0;
@@ -415,22 +518,102 @@ void IRAM_ATTR onTimer() {
 //________________________________________________________________________________
 void setupDisplay() {
     pinMode(_BT2, INPUT_PULLUP);
-    pinMode(_LED, OUTPUT);
+    //pinMode(_LED, OUTPUT);
+
+	gpio_config_t io_cfg;
+	//io_cfg.pin_bit_mask = all_maskA | ((uint64_t) all_maskB << 32);
+	io_cfg.pin_bit_mask = (((uint64_t) all_mask >> 23) << 32) | (all_mask & 0x00ffffff);
+	//io_cfg.pin_bit_mask = (uint64_t) 0x000000ff00ffffff;
+	io_cfg.mode = GPIO_MODE_INPUT_OUTPUT;
+	io_cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+	io_cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+	io_cfg.intr_type = GPIO_INTR_DISABLE;
+	gpio_config(&io_cfg);
+
+	/*
+	for (uint8_t i=0;i<12;i++) {
+		pinMode(s[i], INPUT_PULLDOWN);
+		//digitalWrite(s[i], HIGH);
+	}//for
+	"ver2", 
+	[ 10, 12, 13, 14, 16,  8, 11, 35, 38, 37, 40, 39,],
+	[ 17, 21,  1,  3,  2, 18,  5,  4, 34, 33, 36,  7,  6,  9, 15,]);	# segment S11 and S13 switched in schematic
+	"ver2l", 
+	[ 34, 16, 17, 18, 21, 33, 36, 35, 37, 38, 39, 40,],
+	[ 11, 13,  1,  5,  2, 14,  3,  4,  8,  9, 10,  7,  6, 12,  6,]);
+	"ver3", 
+	[  6, 35, 34, 21, 16, 17,  1,  4, 10, 40, 37,  5,  3,  9, 11,],
+	[ 33, 18,  7,  8, 14, 36, 13, 12, 39, 38, 15,  2, 11,  9, 11,]
+	*/
+	// hardware version detection based on circuit signature S0 + D0
+	// test segment pins below, segment should be low while digits should be high
+	pinMode(17, INPUT_PULLUP);
+	pinMode(10, INPUT_PULLUP);
+	if ((digitalRead(17) == LOW && digitalRead(10) == HIGH)) {		// version 2, 12 characters
+		//if (digitalRead(17) == LOW && digitalRead(10) == HIGH) _detected = 1;
+		_enable_154 = 0;
+		_charlie = 0;
+		_num_of_digits = 12;
+		digit_map = digit_map_v2;
+		digit_map_r = digit_map_r_v2;
+		segment_mask = segment_mask_v2;
+		all_mask = all_mask_v2;
+		spin_mask = spin_mask_v2;
+		asciiA = asciiA_v2;
+		asciiB = asciiB_v2;
+		_version[9] = '2';
+		_version[10] = ' ';
+		_version[11] = ' ';
+	}//if
+	pinMode(11, INPUT_PULLUP);
+	pinMode(34, INPUT_PULLUP);
+	if ((digitalRead(11) == LOW && digitalRead(34) == HIGH)) {	// version 2, 24 characters
+		//if (digitalRead(11) == LOW && digitalRead(34) == HIGH) _detected = 1;
+		_enable_154 = 15;
+		_charlie = 0;
+		_num_of_digits = 24;
+		digit_map = digit_map_v2l;
+		digit_map_r = digit_map_r_v2l;
+		segment_mask = segment_mask_v2l;
+		all_mask = all_mask_v2l;
+		spin_mask = spin_mask_v2l;
+		asciiA = asciiA_v2l;
+		asciiB = asciiB_v2l;
+		_version[9] = '2';
+		_version[10] = 'L';
+		_version[11] = ' ';
+	}//if
+	/* v3 is default, no need to check
+	pinMode(33, INPUT_PULLUP);
+	pinMode(6, INPUT_PULLUP);
+	if (digitalRead(33) == LOW && digitalRead(6) == LOW) _detected = 1;
+	*/
+
+	_font = asciiA;
+
+	//io_cfg.pin_bit_mask = all_maskA | ((uint64_t) all_maskB << 32);
+	io_cfg.pin_bit_mask = (((uint64_t) all_mask >> 23) << 32) | (all_mask & 0x00ffffff);
+	//io_cfg.mode = GPIO_MODE_INPUT_OUTPUT;
+	//io_cfg.pull_up_en = GPIO_PULLUP_DISABLE;
+	//io_cfg.pull_down_en = GPIO_PULLDOWN_ENABLE;
+	//io_cfg.intr_type = GPIO_INTR_DISABLE;
+	gpio_config(&io_cfg);
+
 
 	//_settings.brightness = 4;
 	/*______ direct multiplexing
 	for (uint8_t i=1;i<=18;i++) pinMode(i, OUTPUT);
     pinMode(21, OUTPUT);
 	for (uint8_t i=33;i<=40;i++) pinMode(i, OUTPUT);
-	*/
 	REG_WRITE(GPIO_ENABLE_REG, all_maskA);//0b00000000001001111111111111111110);
 	REG_WRITE(GPIO_ENABLE1_REG, all_maskB);//0b0000000111111110);
 	pinMode(39, OUTPUT);
 	pinMode(40, OUTPUT);
-#ifdef ENABLE_154
-	pinMode(ENABLE_154, OUTPUT);
-	digitalWrite(ENABLE_154, HIGH);
-#endif
+	*/
+	if (_enable_154) {
+		pinMode(_enable_154, OUTPUT);
+		digitalWrite(_enable_154, HIGH);
+	}//if
 	_timer = timerBegin(0, 80, true);
 	timerAttachInterrupt(_timer, onTimer, true);
 	timerAlarmWrite(_timer, 25, true);			// 25us...40Khz
@@ -441,10 +624,18 @@ void setupDisplay() {
 void resetConfig() {
 	strcpy(_settings.text[0], "%b %d %a");
 	strcpy(_settings.addn[0], "%R");
-	strcpy(_settings.text[1], "~W");
-	strcpy(_settings.addn[1], "");
-	strcpy(_settings.text[2], "~w");
-	strcpy(_settings.addn[2], "");
+	if (_num_of_digits == 24) {
+		strcpy(_settings.text[1], "~W");
+		strcpy(_settings.addn[1], "");
+		strcpy(_settings.text[2], "~w");
+		strcpy(_settings.addn[2], "");
+	}//if
+	else {
+		strcpy(_settings.text[1], "~1%X");
+		strcpy(_settings.addn[1], "");
+		strcpy(_settings.text[2], "~2");
+		strcpy(_settings.addn[2], "%X");
+	}//else
 	strcpy(_settings.text[3], "~R");
 	strcpy(_settings.addn[3], "");
 	strcpy(_settings.text[4], "NEW YORK");
@@ -460,15 +651,16 @@ void resetConfig() {
 	_settings.use[0] = _settings.use[1] = _settings.use[2] = _settings.use[3] = 'o';
 	_settings.use[4] = _settings.use[5] = _settings.use[6] = _settings.use[7] = ' ';
 	_settings.use[8] = (char) 1;
-	_settings.cycle = 0;
-	_settings.brightness = 4;
-	_settings.options = OPT_TOUPPER;
+	_settings.cycle = 6;
+	_settings.brightness = 2;
+	_settings.options = OPT_TOUPPER|DISP_FLASH;
 	//_settings.options &= ~OPT_ROTATED;
 	_settings.timezone = -4;
 }
 //________________________________________________________________________________
 void loadConfig() {
 	_brightness = _settings.brightness;
+	_brightness &= 0x03;
 	/*
 	if (_settings.options&OPT_XFONT) {
 		_font  = (_settings.options&OPT_ROTATED) ? aurebeshB : aurebeshA;
@@ -481,7 +673,7 @@ void loadConfig() {
 	*/
 	_font  = (_settings.options&OPT_ROTATED) ? asciiB : asciiA;
 	if (_settings.options&OPT_XFONT) _font += 0x80;
-	_onOff = asciiOnOff;
+	//_onOff = asciiOnOff;
 
 }
 //________________________________________________________________________________
@@ -609,13 +801,20 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <input type='radio' name='transition' value=2 %s> Shift\
 <input type='radio' name='transition' value=3 %s> Drip\
 <input type='radio' name='transition' value=4 %s> Flip\
-<input type='radio' name='transition' value=5 %s> Spin\
+<input type='radio' name='transition' value=5 %s> Flash\
+<input type='radio' name='transition' value=6 %s> Spin\
 </p>\
 <p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>\
-<p>Bright: <input type='range' name='brightness' min=0 max=7 value=%d>\
+<p>Bright: \
+<input type='radio' name='brightness' value=0 %s> 0\
+<input type='radio' name='brightness' value=1 %s> 1\
+<input type='radio' name='brightness' value=2 %s> 2\
+<input type='radio' name='brightness' value=3 %s> 3\
  Rotate: <input type='checkbox' name='optRotate' %s></p>\
 All Caps: <input type='checkbox' name='optToUpper' %s>\
-  Aurebesh: <input type='checkbox' name='optXfont' %s></p>\
+  Aurebesh: <input type='checkbox' name='optXfont' %s>\
+  All Transitions: <input type='checkbox' name='optMtrans' %s>\
+  </p>\
 <p>Time Zone (-11..14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d>\
 &nbsp;<label id='suggest_tz'></label></p>\
 <input type='submit' value='Save Configuration'>\
@@ -680,13 +879,18 @@ _settings.use[8]==30 ? "checked" : "",
 (_settings.options&0x07) == 3 ? "checked" : "",
 (_settings.options&0x07) == 4 ? "checked" : "",
 (_settings.options&0x07) == 5 ? "checked" : "",
+(_settings.options&0x07) == 6 ? "checked" : "",
 _settings.cycle,
-_settings.brightness, 
+(_settings.brightness&0x03) == 0 ? "checked" : "",
+(_settings.brightness&0x03) == 1 ? "checked" : "",
+(_settings.brightness&0x03) == 2 ? "checked" : "",
+(_settings.brightness&0x03) == 3 ? "checked" : "",
 _settings.options & OPT_ROTATED ? "checked" : "", 
 _settings.options & OPT_TOUPPER ? "checked" : "", 
 _settings.options & OPT_XFONT   ? "checked" : "", 
+_settings.options & OPT_MTRANS  ? "checked" : "", 
 _settings.timezone,
-VERSION
+_version
 );
 
 	server.send(200, "text/html", htmlResponse);
@@ -713,7 +917,10 @@ void handleFix() {
 }
 
 void handleMsg() {
-	showMessage(server.pathArg(0).c_str());
+	char msg_buf[50], *p = msg_buf;
+	strncpy(msg_buf, server.pathArg(0).c_str(), 48);
+	while (*p++) if (*p == '_') *p = ' ';
+	showMessage(msg_buf);
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button\n");
 }
@@ -763,7 +970,15 @@ void handleForm() {
 	else _settings.options &= ~OPT_TOUPPER;
 	if (server.arg("optXfont")!= "") _settings.options |= OPT_XFONT;
 	else _settings.options &= ~OPT_XFONT;
-	if (server.arg("timezone")!= "") _settings.timezone = atoi(server.arg("timezone").c_str());
+	if (server.arg("optMtrans")!= "") _settings.options |= OPT_MTRANS;
+	else _settings.options &= ~OPT_MTRANS;
+	if (server.arg("timezone")!= "") {
+		int8_t new_tz = atoi(server.arg("timezone").c_str());
+		if (_settings.timezone != new_tz) {
+			_settings.timezone = new_tz;
+			configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+		}//if
+	}//if
 
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
@@ -773,6 +988,18 @@ void handleForm() {
 }
 
 uint8_t setupWebServer() {
+	const char HELLO[] PROGMEM = R"(
+	{
+		"uri": "/clk",
+		"title": "CLOCK",
+		"menu": true,
+		"element": [
+			{
+				"name":
+			}
+		]
+	}
+	)";
 	server.on("/", handleRoot);
 	server.on("/fix", handleFix);			// example 192.168.2.xx/fix?message=hello world
 	server.on("/reset", handleReset);
@@ -780,7 +1007,7 @@ uint8_t setupWebServer() {
 	server.on("/button1", handleButton1);
 	server.on("/button2", handleButton2);
 	server.on("/favicon.ico", notFound);
-	server.on(UriRegex("/msg/(.+)"), HTTP_GET, handleMsg);		// example 192.168.2.xx/msg/hello%20world
+	server.on(UriRegex("/msg/(.+)"), HTTP_GET, handleMsg);		// example 192.168.2.xx/msg/hello_world
 	//server.onNotFound(notFound);
 	//portal.onNotFound(handleFix1);
 	//server.begin();
@@ -919,13 +1146,15 @@ char* wordTime(char *p, char format) {
 
 //________________________________________________________________________________
 void showMessage(const char *sp) {
-	char out1[48] = "";
-	char out2[48] = "";
-	uint16_t opt = DISP_CLEAR|DISP_FORCE;
+	char out1[50] = "";
+	char out2[50] = "";
+	//uint16_t opt = DISP_CLEAR|DISP_FORCE;
+	uint16_t opt = DISP_FORCE;
 	_input = 0x04;
-	_next_transition = _settings.options&0x07;
+	//_next_transition = _settings.options&0x07;
 	macroSub(&opt, out1, sp);
 	strftime(out2, sizeof(out2), out1, _tm);
+	clearAll();
 	writeString(out2, opt);
 }
 
@@ -949,9 +1178,9 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 }
 
 //________________________________________________________________________________
-void showTime(uint8_t format) {
-	char content[48] = "";
-	char buf[48] = "";
+void showTime(uint8_t format, uint8_t opt=0) {
+	char content[50] = "";
+	char buf[50] = "";
 	uint8_t pos = 0;
 	_epoch = time(NULL);
 	_tm = localtime(&_epoch);
@@ -960,27 +1189,27 @@ void showTime(uint8_t format) {
 		_countdown--;
 		format = 8;
 	}//if
-	uint16_t use_opt = 0;
+	uint16_t use_opt = opt;
 	char *cp = _settings.text[format];
 
-	if (_settings.options&OPT_TOUPPER) use_opt = DISP_UPPERCASE;
+	if (_settings.options&OPT_TOUPPER) use_opt |= DISP_UPPERCASE;
 
 	macroSub(&use_opt, content, cp);
 	strftime(buf, sizeof(buf), content, _tm);
 
 	pos = strlen(buf);
-	if (pos < NUM_OF_DIGITS) {
-		char rbuf[48] = "";
+	if (pos < _num_of_digits) {
+		char rbuf[50] = "";
 		cp = _settings.addn[format];
 		*content = '\0';
 
 		macroSub(&use_opt, content, cp);
 		strftime(rbuf, sizeof(rbuf), content, _tm);
-		while (pos < (NUM_OF_DIGITS-strlen(rbuf))) buf[pos++] = ' ';
-		if ((pos + strlen(rbuf)) > NUM_OF_DIGITS) pos = NUM_OF_DIGITS - strlen(rbuf);
+		while (pos < (_num_of_digits-strlen(rbuf))) buf[pos++] = ' ';
+		if ((pos + strlen(rbuf)) > _num_of_digits) pos = _num_of_digits - strlen(rbuf);
 		buf[pos] = '\0';
 		strcat(buf, rbuf);
-		//buf[NUM_OF_DIGITS] = '\0';
+		//buf[_num_of_digits] = '\0';
 	}//if
 
 	writeString(buf, use_opt);
@@ -1025,13 +1254,14 @@ LEDBar _timeBar;
 
 //________________________________________________________________________________
 void setup() {
+
 	setupDisplay();
 	writeString("OOOOOOOOOOOOOOOOOOOOOOOO");
 	delay(400);
 	writeString("************************");
 	delay(400);
 	clearAll();
-	writeString(VERSION);
+	writeString(_version);
 	uint8_t burn_in = 0;
 	uint32_t current_time = millis();
 	while ((millis() - current_time) < 2000) {
@@ -1048,7 +1278,6 @@ void setup() {
 	if (!burn_in) {
 		writeString("CONNECTING");
 		if (setupWebServer()) {
-			//configTime(TIMEZONE, 0, NTPServer1, NTPServer2);
 			char buf[24];
 			clearAll();
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
@@ -1056,40 +1285,26 @@ void setup() {
 			delay(2000);
 		}//if
 	}//if
-#endif
-	/*
-	if (setup)
-		writeString("CONNECTING", DISP_SHUTTER);
-	else
-		writeString("CONNECTED", DISP_SHUTTER);
+#else
+	//if (_detected)
+	//writeString("DETECTED", DISP_CLEAR);
+	//else
+	writeString("NO WIFI", DISP_CLEAR);
 	delay(1000);
-	*/
-	//setESPAutoWiFiConfigDebugOut(_timeBar);
-	//if (ESPAutoWiFiConfigSetup(_LED, false, sizeof(_settings))) return;
+#endif
 	setupClock();
-	/*
-	strcpy(_settings.addn[8], "#d");
-	_settings.options = 0;
-	strcpy(_settings.text[0], "0123456789AB");
-	*_settings.addn[0] = '\0';
-	strcpy(_settings.text[1], "CDEFGHIJKLMN");
-	*_settings.addn[1] = '\0';
-	strcpy(_settings.text[2], "OPQRSTUVWXYZ");
-	*_settings.addn[2] = '\0';
-	_settings.cycle = 0;
-	_brightness = 4;
-	*/
-	// burn-in use
-	if (burn_in) {
-		_settings.brightness = 4;
-		_settings.cycle = 4;
-		_settings.options = OPT_TOUPPER;
-		_settings.options |= DISP_FLIP;
-	}//if
+	// burn-in or debug use
 	//resetConfig();
 	//saveConfig();
 	//_input = 0x04;
-	//writeString("#x#1012345ABCXYZ", DISP_CLEAR);
+	if (burn_in) {
+		_brightness = 3;
+		_settings.cycle = 4;
+		_settings.options = OPT_TOUPPER;
+		//_settings.options |= DISP_FLIP;
+		_settings.options |= DISP_FLASH;
+		//_settings.options |= OPT_MTRANS;
+	}//if
 }
 static int _count = 0;
 //________________________________________________________________________________
@@ -1098,6 +1313,7 @@ void loop() {
 	static uint32_t save_time = 0;
 	static uint32_t stay_in_3_until = 0;
 	uint32_t current_time = millis();
+	uint8_t opt = 0;
 
 	if (digitalRead(_BT2) == LOW) {
 		while (digitalRead(_BT2) == LOW) {			// wait for key release
@@ -1130,7 +1346,8 @@ void loop() {
 			if (current_time > stay_in_3_until) {
 				stay_in_3_until = 0;
 				saveConfig();
-				_next_transition = _settings.options&0x07;		// force transition
+				//_next_transition = _settings.options&0x07;		// force transition
+				opt |= DISP_FORCE;
 				cycle = _settings.cycle;
 			}//if
 			else {
@@ -1142,7 +1359,7 @@ void loop() {
 	if (_input == 3) stay_in_3_until = millis() + 1000;
 	if (_input & 0x03) current_time += 1000;		// force immediate action
 
-	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-DRIP", "-FLIP", "-SPIN", };
+	const char _transit_label[][10] = { "-NONE", "-SHUTTER", "-SHIFT", "-DRIP", "-FLIP", "-FLASH", "-SPIN", };
 	switch (_input) {
 		case 1: // increment countdown minutes
 			if (!_settings.use[8]) _settings.use[8] = 1;
@@ -1163,8 +1380,9 @@ void loop() {
 					if (check==_mode) _settings.use[0] = 'o';
 				}//while
 				cycle = _settings.cycle;
-				_next_transition = _settings.options&0x07;
+				//_next_transition = _settings.options&0x07;
 			}//else
+			opt |= DISP_FORCE;
 			}
 			break;
 		case 3: // long pressed button 2
@@ -1191,7 +1409,7 @@ void loop() {
 		// every second we do this
 		save_time = current_time;
 		if (!_input) {	// normal mode, check to automatic cycling of contents
-			showTime(_mode);
+			showTime(_mode, opt);
 			if (cycle) {
 				cycle--;
 			}//if
@@ -1199,7 +1417,7 @@ void loop() {
 				if (_settings.cycle && !_countdown) {		// advance content, set timer for next advance
 					_input = 2;
 					cycle = _settings.cycle;
-					_next_transition = _settings.options&0x07;
+					//_next_transition = _settings.options&0x07;
 				}//if
 			}//else
 		}//if
