@@ -13,7 +13,7 @@ This is a web synchronized clock featuring 14 segment LED displays, allowing spe
 The S14Clock is available for purchase from l(store139 in Tindie;https://www.tindie.com/products/29601/).
 If you are building this project, there are additonal tips in the l(project wiki page;https://github.com/simpleavr/s14clock/wiki).
 Github repository, l(my github repository;https://github.com/simpleavr/s14clock)
-Firmware Installer l(click here;./install.html). b(NOT READY, DO NOT USE)
+Firmware Installer l(click here;./install.html).
 :
 :j s14-12-24_00.JPG s14-24-12_01.JPG
 Two versions of 12 (S14-12) and (S14-24) 24 characters were created, with same functionality. The clock offers various display format and optons. It can also be used as an internet display, accepting messages via a web page.
