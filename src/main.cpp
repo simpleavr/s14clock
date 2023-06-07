@@ -23,6 +23,7 @@
 // c2305 autodetect v2, v2l, v3 hardware
 // c2305 substitute underscore with space for ad-hoc messages
 // c2305 ad-hoc messages now follows transition in
+// c2306 softAP now uses unique SSID name constructed from chip id
 //
 // c230501 start v202
 //         merge / simplify mask vairables
@@ -43,7 +44,7 @@
 #ifdef USE_WIFI
 WebServer 			server;
 AutoConnect      	portal(server);
-AutoConnectConfig   Config("esp32ap", "12345678");
+AutoConnectConfig   Config;
 #endif
 
 #define NTPServer1  "pool.ntp.org"
@@ -65,12 +66,13 @@ AutoConnectConfig   Config("esp32ap", "12345678");
 //#include <Preferences.h>
 //#include <nvs.h>
 
-hw_timer_t *_timer=0;
+hw_timer_t *_timer = 0;
 
 Preferences prefs;
 uint8_t _brightness = 3;
 
 //____ default hardware is v3-24 character version
+uint32_t _chip_id;
 char _version[14] = "FW2.02 HW3  ";
 uint8_t _num_of_digits = 24;
 uint8_t _enable_154 = 0;
@@ -104,6 +106,7 @@ const uint32_t *asciiB_c = asciiB_v3_c;
 #define OPT_TOUPPER (1<<4)
 #define OPT_XFONT   (1<<5)
 #define OPT_MTRANS  (1<<6)
+#define OPT_DEMO    (1<<7)
 
 static struct {
 	char text[9][25];
@@ -207,8 +210,8 @@ void scan() {
 		}//if
 	}//if
 	uint32_t mask = segment_mask;
-	//if (_charlie && digit >= 12) mask = segment_mask_v3_c;
-	if (_charlie && (digit%12) >= 6) mask = segment_mask_v3_c;
+	if (_charlie && digit >= 12) mask = segment_mask_v3_c;
+	//if (_charlie && (digit%12) >= 6) mask = segment_mask_v3_c;
 
 	REG_WRITE(GPIO_OUT_W1TC_REG, mask & 0x00ffffff);
 	REG_WRITE(GPIO_OUT1_W1TC_REG, mask >> 23);
@@ -224,11 +227,11 @@ void scan() {
 	if (_segment_limit) mask = spin_mask[_segment_limit];
 	if (_charlie) {
 		if (_settings.options&OPT_ROTATED)
-			//_font = digit >= 12 ? asciiB_v3_c : asciiB_v3;
-			_font = (digit%12) >= 6 ? asciiB_v3_c : asciiB_v3;
+			_font = digit >= 12 ? asciiB_v3_c : asciiB_v3;
+			//_font = (digit%12) >= 6 ? asciiB_v3_c : asciiB_v3;
 		else
-			//_font = digit >= 12 ? asciiA_v3_c : asciiA_v3;
-			_font = (digit%12) >= 6 ? asciiA_v3_c : asciiA_v3;
+			_font = digit >= 12 ? asciiA_v3_c : asciiA_v3;
+			//_font = (digit%12) >= 6 ? asciiA_v3_c : asciiA_v3;
 	}//if
 	if (!_enable_154) pinMode(digit_map[digit], INPUT);
 	uint32_t font = _font[_chr_buf[d+_excess_shift]];
@@ -549,6 +552,7 @@ void setupDisplay() {
 	// test segment pins below, segment should be low while digits should be high
 	pinMode(17, INPUT_PULLUP);
 	pinMode(10, INPUT_PULLUP);
+	delay(50);
 	if ((digitalRead(17) == LOW && digitalRead(10) == HIGH)) {		// version 2, 12 characters
 		//if (digitalRead(17) == LOW && digitalRead(10) == HIGH) _detected = 1;
 		_enable_154 = 0;
@@ -567,6 +571,7 @@ void setupDisplay() {
 	}//if
 	pinMode(11, INPUT_PULLUP);
 	pinMode(34, INPUT_PULLUP);
+	delay(50);
 	if ((digitalRead(11) == LOW && digitalRead(34) == HIGH)) {	// version 2, 24 characters
 		//if (digitalRead(11) == LOW && digitalRead(34) == HIGH) _detected = 1;
 		_enable_154 = 15;
@@ -898,6 +903,8 @@ _version
 
 void handleButton1() {
 	_input = 0x01;
+	portal.end();
+	writeString("DEMO", DISP_CLEAR);
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
 }
@@ -911,7 +918,12 @@ void handleButton2() {
 void showMessage(const char *sp);
 
 void handleFix() {
-	showMessage(server.arg("message").c_str());
+	char buf[15];
+		AutoConnectAux* aux = portal.aux("/demo");
+		AutoConnectText& text = aux->getElement<AutoConnectText>("message");
+		sprintf(buf, "%10.10s", text.value.c_str());
+		writeString("kkk", DISP_CLEAR);
+	//showMessage(server.arg("message").c_str());
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button\n");
 }
@@ -987,19 +999,43 @@ void handleForm() {
 	//server.send(200, "text/html", htmlResponse);
 }
 
+bool waitConnect() {
+	static int prev_state = 0;
+	static uint32_t s = 0;
+	uint32_t c = millis();
+	if ((c-s) > 1000) {
+		int curr_state = portal.portalStatus();
+		if (curr_state != prev_state) {
+			if (curr_state & AutoConnect::AC_CAPTIVEPORTAL)
+				writeString(Config.apid.c_str(), DISP_CLEAR);
+			else
+				writeString(String(curr_state).c_str(), DISP_CLEAR);
+			prev_state = curr_state;
+		}//if
+		if (_settings.options&OPT_DEMO) {
+			return false;
+		}//if
+		s = c;
+	}//if
+	return true;
+}
+
+String onRes(AutoConnectAux& aux, PageArgument& args) {
+	char buf[20];
+	strcpy(buf, args.arg("epoch").c_str());
+	buf[strlen(buf)-3] = '\0';
+	int epoch = atoi(buf);
+	sprintf(buf, "%12d", epoch);
+	writeString(buf, DISP_CLEAR|DISP_FORCE);
+	struct timeval n;
+	n.tv_sec = epoch;
+	n.tv_usec = 0;
+	settimeofday(&n, NULL);
+	_settings.options |= OPT_DEMO;
+	return String();
+}
+
 uint8_t setupWebServer() {
-	const char HELLO[] PROGMEM = R"(
-	{
-		"uri": "/clk",
-		"title": "CLOCK",
-		"menu": true,
-		"element": [
-			{
-				"name":
-			}
-		]
-	}
-	)";
 	server.on("/", handleRoot);
 	server.on("/fix", handleFix);			// example 192.168.2.xx/fix?message=hello world
 	server.on("/reset", handleReset);
@@ -1011,9 +1047,61 @@ uint8_t setupWebServer() {
 	//server.onNotFound(notFound);
 	//portal.onNotFound(handleFix1);
 	//server.begin();
+	const char PAGE_DEMO[] PROGMEM = R"( {
+	  "uri": "/demo",
+	  "title": "Demo",
+	  "menu": true,
+	  "element": [
+		{
+		  "name": "epoch",
+		  "type": "ACInput",
+		  "label": "epoch",
+		  "apply": "number"
+		},
+		{
+		  "name": "run",
+		  "type": "ACSubmit",
+		  "value": "RUN",
+		  "uri": "/demo_on"
+		},
+		{
+		  "name": "js",
+		  "type": "ACElement",
+		  "value": "<script>document.getElementById('epoch').value = Date.now();</script>"
+		}
+	  ]
+	})";
+
+	const char PAGE_DEMO_ON[] PROGMEM = R"( {
+	  "uri": "/demo_on",
+	  "title": "Demo Clock On",
+	  "menu": false,
+	  "element": [
+		{
+		  "name": "content",
+		  "type": "ACText",
+		  "value": "Standalone run without WiFi setting."
+		}
+	  ]
+	})";
+
+	AutoConnectAux aDemo, aDemo_on;
+	aDemo.load(PAGE_DEMO);
+	aDemo_on.load(PAGE_DEMO_ON);
+	portal.join({aDemo, aDemo_on});
+	portal.on("/demo_on", onRes);
+
+	for (int i=0;i<17;i=i+8) _chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+	String cid = String(_chip_id, HEX);
+	cid.toUpperCase();
+
+	Config.apid = "ESP-" + cid;
+	Config.psk = "12345678";
 	portal.config(Config);
+	portal.whileCaptivePortal(waitConnect);
 	return portal.begin();
 }
+
 
 #endif
 
@@ -1044,7 +1132,6 @@ static time_t _epoch = 0;
 static struct tm *_tm = 0;
 //________________________________________________________________________________
 char* wordTime(char *p, char format) {
-	uint8_t pos=0;
 	switch (format) {
 		case 'W': 
 		{
@@ -1089,10 +1176,8 @@ char* wordTime(char *p, char format) {
 				if (_tm->tm_min >= 20) {
 					_tm->tm_min -= 20;
 					strcat(p, tens[_tm->tm_min/10]);
-					if (_tm->tm_min%10) {
-						strcat(p, "'"); pos++;
+					if (_tm->tm_min%10)
 						strcat(p, units[_tm->tm_min%10]);
-					}//if
 				}//if
 				else {
 					if (_tm->tm_min < 10) {
@@ -1140,6 +1225,7 @@ char* wordTime(char *p, char format) {
 			break;
 		default: break;
 	}//switch
+	_tm = localtime(&_epoch);		// _tm already messed up, reload
 	while (*p) p++;
 	return p;
 }
@@ -1170,7 +1256,21 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 			if (strchr("WwRrUuDdXx", *sp)) dp = wordTime(dp, *sp);
 		}//if
 		else {
-			*dp++ = *sp;
+			if (*sp == '%' && *(sp+1) == '-' && (strchr("dmHIMSjuW", *(sp+2)))) {
+				// implement zero / space suppression
+				sp += 2;
+				char token[3], sbuf[16], *p=sbuf;
+				token[0] = '%';
+				token[1] = *sp;
+				token[2] = '\0';
+				strftime(sbuf, sizeof(sbuf), token, _tm);
+				while (*p == '0' || *p == ' ') p++;
+				if (!*p && *(p-1) == '0') --p;
+				while (*p) *dp++ = *p++;
+			}//if
+			else {
+				*dp++ = *sp;
+			}//else
 		}//else
 		sp++;
 	}//while
@@ -1276,14 +1376,18 @@ void setup() {
 	clearAll();
 #ifdef USE_WIFI
 	if (!burn_in) {
-		writeString("CONNECTING");
+		//writeString("CONNECTING");
 		if (setupWebServer()) {
 			char buf[24];
-			clearAll();
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
-			writeString(buf);
-			delay(2000);
+			writeString(buf, DISP_CLEAR);
 		}//if
+		else {
+			_settings.options &= ~OPT_DEMO;
+			writeString("STANDALONE", DISP_CLEAR);
+			burn_in = 1;
+		}//else
+		delay(2000);
 	}//if
 #else
 	//if (_detected)
@@ -1298,12 +1402,19 @@ void setup() {
 	//saveConfig();
 	//_input = 0x04;
 	if (burn_in) {
+		resetConfig();
+		/*
+		struct timeval n;
+		n.tv_sec = 1685555;
+		n.tv_usec = 555555;
+		settimeofday(&n, NULL);
 		_brightness = 3;
 		_settings.cycle = 4;
 		_settings.options = OPT_TOUPPER;
 		//_settings.options |= DISP_FLIP;
 		_settings.options |= DISP_FLASH;
 		//_settings.options |= OPT_MTRANS;
+		*/
 	}//if
 }
 static int _count = 0;

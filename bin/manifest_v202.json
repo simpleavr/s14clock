@@ -1,5 +1,5 @@
 {
-  "name": "S14Clock common firmware",
+  "name": "S14Clock v2.02 common firmware",
   "version": "2.02",
   "builds": [
     {
@@ -8,7 +8,7 @@
       "parts": [
         { "path": "bootloader.bin", "offset": 4096 },
         { "path": "partitions.bin", "offset": 32768 },
-        { "path": "firmware_201.bin", "offset": 65536 }
+        { "path": "firmware_202.bin", "offset": 65536 }
       ]
     }
   ]

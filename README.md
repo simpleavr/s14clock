@@ -1,4 +1,6 @@
 # S14Clock
+**2013-06-07** V2.02 common firmware auto-detects and support all (V3, V2-24, V2-12) hardware designs. V3 hardware design eliminates 74HC154 4-to-16 line decoder. V2.02 software adds charliplexing to V2.01 led multiplexing scheme and achieves 14 x 24 (336 segments) direct driving with 26 IO pins.
+
 S14Clock is a bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment display.
 
 [Project description](https://simpleavr.github.io/s14clock/index.html)
@@ -34,4 +36,5 @@ V2.02 firmware (2023-05-29)
 - autodetect v2, v2l, v3 hardware
 - substitute underscore with space for ad-hoc messages
 - ad-hoc messages now follows transition in
+- implements %-[dmHIMSjuW] tokens in strftime() to suppress leading zeros and spaces
 

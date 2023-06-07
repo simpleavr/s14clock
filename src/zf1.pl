@@ -153,9 +153,9 @@ sub gen_file {
 	my ($fn, $dg, $sg) = @_;
 
 	my @use_dg = @{$dg};
-	#$fn =~ /3/ and @use_dg = (@{$dg}[0..11], @{$sg}[0..11]);
+	$fn =~ /3/ and @use_dg = (@{$dg}[0..11], @{$sg}[0..11]);
 	# v3 led arranged as led1, led3, led2, led4
-	$fn =~ /3/ and @use_dg = (@{$dg}[0..5], @{$sg}[0..5], @{$dg}[6..11], @{$sg}[6..11]);
+	#$fn =~ /3/ and @use_dg = (@{$dg}[0..5], @{$sg}[0..5], @{$dg}[6..11], @{$sg}[6..11]);
 
 	print "const uint8_t digit_map_${fn}[]   = { ", join ", ", @use_dg, " };\n";
 	print "const uint8_t digit_map_r_${fn}[]   = { ", join ", ", reverse(@use_dg), " };\n\n";
