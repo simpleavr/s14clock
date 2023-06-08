@@ -1158,10 +1158,20 @@ char* wordTime(char *p, char format) {
 			else {
 				if (_tm->tm_min) strcat(p, " PAST ");
 			}//else
-			_tm->tm_hour %= 12;
-			if (!_tm->tm_hour) _tm->tm_hour = 12;
-			strcat(p, units[_tm->tm_hour]);
-			if (!_tm->tm_min) strcat(p, " O'CLOCK ");
+			if ((to>1 || !_tm->tm_min) && !(_tm->tm_hour%12)) {
+				//if (_tm->tm_min) _tm->tm_hour--;
+				_tm->tm_hour %= 24;
+				if (!_tm->tm_hour)
+					strcat(p, "MIDNIGHT");
+				else
+					strcat(p, "NOON");
+			}//if
+			else {
+				_tm->tm_hour %= 12;
+				if (!_tm->tm_hour) _tm->tm_hour = 12;
+				strcat(p, units[_tm->tm_hour]);
+				if (!_tm->tm_min) strcat(p, " O'CLOCK ");
+			}//else
 			break;
 		}
 		case 'w': {
@@ -1176,8 +1186,10 @@ char* wordTime(char *p, char format) {
 				if (_tm->tm_min >= 20) {
 					_tm->tm_min -= 20;
 					strcat(p, tens[_tm->tm_min/10]);
-					if (_tm->tm_min%10)
+					if (_tm->tm_min%10) {
+						strcat(p, "'");
 						strcat(p, units[_tm->tm_min%10]);
+					}//if
 				}//if
 				else {
 					if (_tm->tm_min < 10) {
@@ -1405,8 +1417,10 @@ void setup() {
 		resetConfig();
 		/*
 		struct timeval n;
-		n.tv_sec = 1685555;
-		n.tv_usec = 555555;
+		//n.tv_sec = 3600*28 -8 -60*2;
+		//n.tv_sec = 3600*16 -8 -60*2;
+		n.tv_sec = 60*44;
+		n.tv_usec = 0;
 		settimeofday(&n, NULL);
 		_brightness = 3;
 		_settings.cycle = 4;
