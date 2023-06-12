@@ -1402,17 +1402,12 @@ void setup() {
 		}
 	}
 	if(resettingCredentials){
-		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
-		delay(500);
-		writeString("", DISP_CLEAR);
-		delay(500);
-		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
-		delay(500);
-		writeString("", DISP_CLEAR);
-		delay(500);
-		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
-		delay(500);
-		writeString("", DISP_CLEAR);
+		for(int sc = 0; sc < 3; sc++){
+			writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
+			delay(500);
+			writeString("", DISP_CLEAR);
+			delay(500);
+		}
 		delay(500);
 	}
 	writeString("************************");
