@@ -918,12 +918,7 @@ void handleButton2() {
 void showMessage(const char *sp);
 
 void handleFix() {
-	char buf[15];
-		AutoConnectAux* aux = portal.aux("/demo");
-		AutoConnectText& text = aux->getElement<AutoConnectText>("message");
-		sprintf(buf, "%10.10s", text.value.c_str());
-		writeString("kkk", DISP_CLEAR);
-	//showMessage(server.arg("message").c_str());
+	showMessage(server.arg("message").c_str());
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button\n");
 }
