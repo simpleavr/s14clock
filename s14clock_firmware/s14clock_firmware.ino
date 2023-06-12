@@ -626,6 +626,29 @@ void setupDisplay() {
 	clearAll();
 }
 //________________________________________________________________________________
+
+void resetCredentials(void) {
+  AutoConnectCredential credential;
+  station_config_t config;
+  uint8_t ent = credential.entries();
+
+  Serial.println("AutoConnectCredential deleting");
+  if (ent)
+    Serial.printf("Available %d entries.\n", ent);
+  else {
+    Serial.println("No credentials saved.");
+    return;
+  }
+
+  while (ent--) {
+    credential.load((int8_t)0, &config);
+    if (credential.del((const char*)&config.ssid[0]))
+      Serial.printf("%s deleted.\n", (const char*)config.ssid);
+    else
+      Serial.printf("%s failed to delete.\n", (const char*)config.ssid);
+  }
+}
+
 void resetConfig() {
 	strcpy(_settings.text[0], "%b %d %a");
 	strcpy(_settings.addn[0], "%R");
@@ -1366,10 +1389,37 @@ LEDBar _timeBar;
 
 //________________________________________________________________________________
 void setup() {
-
+	unsigned long msNow = millis();
+	
 	setupDisplay();
+	
+	
 	writeString("OOOOOOOOOOOOOOOOOOOOOOOO");
-	delay(400);
+	delay(700);
+	bool resettingCredentials = false;
+	if(digitalRead(_BT2) == LOW){
+		writeString("HOLD 3s TO RESET", DISP_CLEAR);
+	}
+	while(digitalRead(_BT2) == LOW){
+		if(millis() - msNow > 3000){
+			resettingCredentials = true;
+			resetCredentials();
+		}
+	}
+	if(resettingCredentials){
+		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
+		delay(500);
+		clearAll();
+		delay(500);
+		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
+		delay(500);
+		clearAll();
+		delay(500);
+		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
+		delay(500);
+		clearAll();
+		delay(500);
+	}
 	writeString("************************");
 	delay(400);
 	clearAll();
@@ -1388,7 +1438,7 @@ void setup() {
 	clearAll();
 #ifdef USE_WIFI
 	if (!burn_in) {
-		//writeString("CONNECTING");
+		writeString("connecting...", DISP_CLEAR);
 		if (setupWebServer()) {
 			char buf[24];
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
