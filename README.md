@@ -24,6 +24,12 @@ If using Arduino to build, make sure you install the library first.
 ## Building using Arduino
 
 - Open the folder `s14clock_firmware`, double click `s14clock_firmware.ino` and it will open in the Arduino IDE
+- if you don't yet have support for ESP32 follow [the instructions](https://docs.espressif.com/projects/arduino-esp32/en/latest/installing.html) to install the platform
+- go to Library Manager, search for "AutoConnect" and install the resulting library by "Hieromon Ikasamo"
+- select the board ESP32 > ESP32S2 Dev Module 
+- select the port it is connected to
+- press Verify
+- if it verifies correctly press Upload
 
 ## Building with PlatformIO
 
@@ -32,6 +38,8 @@ If using Arduino to build, make sure you install the library first.
 - pio project init --board lolin_s2_mini
 - pio lib install AutoConnect
 - pio run --target upload
+
+Once installed, follow the guide hosted at the [project description](https://simpleavr.github.io/s14clock/index.html)
 
 V2.01 firmware (2023-03-20)
 
