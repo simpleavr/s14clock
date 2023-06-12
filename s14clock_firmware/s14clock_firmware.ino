@@ -1409,15 +1409,15 @@ void setup() {
 	if(resettingCredentials){
 		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
 		delay(500);
-		clearAll();
+		writeString("", DISP_CLEAR);
 		delay(500);
 		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
 		delay(500);
-		clearAll();
+		writeString("", DISP_CLEAR);
 		delay(500);
 		writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
 		delay(500);
-		clearAll();
+		writeString("", DISP_CLEAR);
 		delay(500);
 	}
 	writeString("************************");
