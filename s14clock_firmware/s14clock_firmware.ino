@@ -1384,7 +1384,6 @@ LEDBar _timeBar;
 
 //________________________________________________________________________________
 void setup() {
-	unsigned long msNow = millis();
 	
 	setupDisplay();
 	
@@ -1392,6 +1391,7 @@ void setup() {
 	writeString("OOOOOOOOOOOOOOOOOOOOOOOO");
 	delay(700);
 	bool resettingCredentials = false;
+	unsigned long msNow = millis();
 	if(digitalRead(_BT2) == LOW){
 		writeString("HOLD 3s TO RESET", DISP_CLEAR);
 	}
