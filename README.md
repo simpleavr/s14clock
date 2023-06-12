@@ -19,10 +19,15 @@ Build using Arduino or PlatformIO.
 S14Clock relies on Arduino AutoConnect library by Hieromon.
 If using Arduino to build, make sure you install the library first.
 
-Package is built under windows 10 with platformio
+[Download as **.zip**](https://github.com/simpleavr/s14clock/archive/refs/heads/main.zip) or clone the project with `git clone https://github.com/simpleavr/s14clock.git`
 
-- git clone https://github.com/simpleavr/s14clock.git
-- edit src/main.cpp to include "ver2.h" (12 characters version) or "ver2l.h" (24 characters version)
+## Building using Arduino
+
+- Open the folder `s14clock_firmware`, double click `s14clock_firmware.ino` and it will open in the Arduino IDE
+
+## Building with PlatformIO
+
+- ~~edit src/main.cpp to include "ver2.h" (12 characters version) or "ver2l.h" (24 characters version)~~
 - cd s14clock
 - pio project init --board lolin_s2_mini
 - pio lib install AutoConnect
