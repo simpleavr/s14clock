@@ -1391,19 +1391,34 @@ void setup() {
 	writeString("OOOOOOOOOOOOOOOOOOOOOOOO");
 	delay(700);
 	bool resettingCredentials = false;
+	uint8_t countDown = 3;
 	unsigned long msNow = millis();
 	if(digitalRead(_BT2) == LOW){
-		writeString("HOLD 3s TO RESET", DISP_CLEAR);
+		if (_num_of_digits == 12)
+			writeString("3s TO RESET", DISP_CLEAR);
+		else
+			writeString("HOLD 3s TO RESET", DISP_CLEAR);
 	}
-	while(digitalRead(_BT2) == LOW){
-		if(millis() - msNow > 3000){
-			resettingCredentials = true;
-			resetCredentials();
-		}
-	}
-	if(resettingCredentials){
-		for(int sc = 0; sc < 3; sc++){
-			writeString("WIFI SETTINGS CLEAR", DISP_CLEAR);
+	while (digitalRead(_BT2) == LOW){
+		unsigned long elapsed = millis() - msNow;
+		if ((millis() - msNow) > 1000) {
+			countDown--;
+			msNow = millis();
+			writeAscii(_num_of_digits == 12 ? 0 : 5, countDown + '0');
+			if (!countDown) {
+				delay(200);
+				resettingCredentials = true;
+				resetCredentials();
+				break;
+			}//if
+		}//if
+	}//while
+	if (resettingCredentials) {
+		for(uint8_t sc = 0; sc < 3; sc++){
+			if (_num_of_digits == 12)
+			writeString("WIFI CLEARED", DISP_CLEAR);
+			else
+				writeString("WIFI SETTINGS CLEARED", DISP_CLEAR);
 			delay(500);
 			writeString("", DISP_CLEAR);
 			delay(500);
@@ -1428,7 +1443,7 @@ void setup() {
 	clearAll();
 #ifdef USE_WIFI
 	if (!burn_in) {
-		writeString("CONNECTING...", DISP_CLEAR);
+		writeString("CONNECTING..", DISP_CLEAR);
 		if (setupWebServer()) {
 			char buf[24];
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());

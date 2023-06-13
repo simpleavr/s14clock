@@ -11,6 +11,10 @@
 <br>
 <iframe width="560" height="315" src="https://www.youtube.com/embed/q_kRyNXgdq0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
 <br><br>
+<p>
+<b>2023-06-07</b> V3 hardware (24 characters) released, 74HC154 eliminated. New circuit design adds charliplexing to led multiplexing to simplify design. No more SMD to solder makes a more robust kit.
+</p>
+<br>
 <h3>Description</h3><br>
 <p>
 <p>This is a web synchronized clock featuring 14 segment LED displays, allowing spelled word time display options, plus various numeric character sets.</p>
@@ -46,7 +50,7 @@
 <p>The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. </p>
 <p>Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. </p>
 <br><img  border="2px solid #555" src="images/s14-24-12_04.JPG"><br><br>
-<p>Use your phone or computer and locate the AP with SSID "esp32ap", connect with password "12345678".</p>
+<p>Use your phone or computer and locate the AP with SSID "ESP-??????", connect with password "12345678".</p>
 <p>Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.</p>
 <p>Enter your home network WIFI credentials and hit "Apply" button.</p>
 <br><img class="w240" border="2px solid #555" src="images/ap01.png"><img class="w240" border="2px solid #555" src="images/ap02.png"><img class="w240" border="2px solid #555" src="images/ap03.png"><br><br>
@@ -90,12 +94,23 @@ Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also requi
 </p>
 </p>
 </p>
+<h3>Startup Options</h3><br>
+<p>
+<p>Upon startup or hardware reset, the clock unit will show briefly various messages, pressing button 0 (of the S2 Mini board) at various stages will allow for certain operations.</p>
+<p>Upon power-up, display will show "000000000000..." for 0.7 seconds, followed by "************..." for 0.4 seconds, it will then show the firmware and hardware versions for 2 seconds.</p>
+<p>
+During the show of "000000000000...", press and hold button 0 will <b>reset the WIFI credentials</b> of the clock unit, and upon next reset the clock unit will be placed in strict setup mode only, and will not search for WIFI network setup previously.
+<p>
+During the show of versions, "FWx.xx HWxxx", press button 0 will force the clock unit to enter a <b>burn-in</b> mode, and the clock unit will operate it display mechanism without WIFI and NTP connection.
+</p>
+</p>
+</p>
 <h3>Firmware Update</h3><br>
 <p>
 <p>Potential bug fixes and feature enhancements will be provided in <a href="https://github.com/simpleavr/s14clock">my github repository</a>. </p>
-<p><a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool">Adafruit's ESPTool</a> can be used to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use it;</p>
+<p>You can try to use this (web based installer;https://simpleavr.github.io/s14clock/install.html), and often times it fails. And then you should try this more reliable <a href="https://adafruit.github.io/Adafruit_WebSerial_ESPTool">Adafruit's ESPTool</a> to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use either of the tools;</p>
+<p>For using the Adafruit ESPTool, you have to download appropriate firmware bin file from my github repository, binaries are <a href="https://github.com/simpleavr/s14clock/tree/main/bin">in the bin directory</a>.</p>
 <ul>
-<li>Download appropriate firmware bin file from my github repository, binaries are <b>contained in releases</b>.</li>
 <li>Conncet the S14Clock unit to laptop / PC via usb</li>
 <li>Launch browser and navigate to the above mentioned ESPTool web page</li>
 <li>Reset clock unit by pressing 'Reset' while holding the '0' button</li>
@@ -133,6 +148,62 @@ Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also requi
 <h3>Schematic and Source Code</h3><br>
 <pre>
 <code>
+           (S14-24V3 Clock) <b>latest design, replaces S14-24, eleminates 74HC154</b>
+           ESP32 S2 MINI
+         -----------------                             2x 3692AS LED Displays
+        |                 |                  _____________________________________
+        |           row 0 |---------------->|D1  ___                         ___  |
+        |           row 1 |---------------->|D2 |\|/|    _________________  |\|/| |
+        |           row 2 |---------------->|D3  - -   ___________________   - -  |
+        |           row 3 |---------------->|D4 |/|\|                       |/|\| |
+        |           row 4 |---------------->|D5  ---                         ---  |
+        |           row 5 |---------------->|D6  A B C D E F 1 2 H J K L M N dp   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                  ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |           row 6 |---------------->|D1     ___ a                         |
+        |           row 7 |---------------->|D2   f|\|/|b (hjk)                   |
+        |           row 8 |---------------->|D3     - - g G                       |
+        |           row 9 |---------------->|D4   e|/|\|c (nml)                   |
+        |           row 10|---------------->|D5     === d                         |
+        |           row 11|---------------->|D6                                   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                      | | |                     | |
+        |           com 0 |----------------------+ | |                     | NC
+        |           com 1 |------------------------+ |  /................/ |
+        |           com 2 |--------------------------+                     |
+        |           .   ..| ....     similar to all common lines     ..../ |
+        |           .   ..|    ....                                        |
+        |           com 13|------------------------------------------------+ 
+        |                 |    <b>digits become segments, and segments become digits in this charliplexing configuration</b>
+        |                 |                            2x 3692AS LED Displays
+        |                 |                  _____________________________________
+        |           com 0 |---------------->|D1  ___                         ___  |
+        |           com 1 |---------------->|D2 |\|/|    _________________  |\|/| |
+        |           com 2 |---------------->|D3  - -   ___________________   - -  |
+        |           com 3 |---------------->|D4 |/|\|                       |/|\| |
+        |           com 4 |---------------->|D5  ---                         ---  |
+        |           com 5 |---------------->|D6  A B C D E F 1 2 H J K L M N dp   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                  ____|_|_|_|_|_|_|_|_|_|_|_|_|_|_|____
+        |           com 6 |---------------->|D1     ___ a                         |
+        |           com 7 |---------------->|D2   f|\|/|b (hjk)                   |
+        |           com 8 |---------------->|D3     - - g G                       |
+        |           com 9 |---------------->|D4   e|/|\|c (nml)                   |
+        |           com 10|---------------->|D5     === d                         |
+        |           com 11|---------------->|D6                                   |
+        |                 |                  ----|-|-|-|-|-|-|-|-|-|-|-|-|-|-|----
+        |                 |                      | | |               | | | | |
+        |           row 0 |----------------------+ | |               | | | | NC
+        |           row 1 |------------------------+ |  /............/ | | |
+        |           row 2 |--------------------------+                 | | |
+        |           .   ..| ....     similar to all row lines    ..../ | | |
+        |           row 11|--------------------------------------------+ | |
+        |           com 12|----------------------------------------------+ |
+        |           com 13|------------------------------------------------+ 
+        |                 |             
+        |                 |             
+        +-----------------+  * actual io pin to row / col map depends on PCB version
+<br>
            (S14-12 Clock)
            ESP32 S2 MINI
          -----------------                             2x 3692AS LED Displays
@@ -158,12 +229,12 @@ Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also requi
         |           com 2 |--------------------------+                     | |
         |           .   ..| ....     similar to all common lines     ..../ | |
         |           .   ..|    ....                                        | |
-        |           com 14|------------------------------------------------+ |
-        |           com 15|--------------------------------------------------+
+        |           com 13|------------------------------------------------+ |
+        |           com 14|--------------------------------------------------+
         |                 |             
         +-----------------+  * actual io pin to row / col map depends on PCB version
 <br>
-           (S14-24 Clock)
+           (S14-24 Clock) <b>obsolete, replaced by S14-24V3</b>
            ESP32 S2 MINI
          -----------------                             4x 3692AS LED Displays
         |                 |                  _____________________________________
@@ -205,7 +276,7 @@ Change of <b>Time Zone</b>, after clicking on the 'Save' button, will also requi
         |           com 2 |--------------------------+                     |  
         |           .   ..| ....     similar to all common lines     ..../ |  
         |           .   ..|    ....                                        |  
-        |           com 14|------------------------------------------------+  
+        |           com 13|------------------------------------------------+  
         |                 |             
         +-----------------+  * actual io pin to row / col map depends on PCB version
 <br>
