@@ -1428,7 +1428,7 @@ void setup() {
 	clearAll();
 #ifdef USE_WIFI
 	if (!burn_in) {
-		writeString("connecting...", DISP_CLEAR);
+		writeString("CONNECTING...", DISP_CLEAR);
 		if (setupWebServer()) {
 			char buf[24];
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
