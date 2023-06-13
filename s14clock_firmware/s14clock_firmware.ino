@@ -104,7 +104,7 @@ const uint32_t *asciiB_c = asciiB_v3_c;
 
 #define OPT_ROTATED	(1<<3)
 #define OPT_TOUPPER (1<<4)
-#define OPT_XFONT   (1<<5)
+#define OPT_NOTUSED (1<<5)
 #define OPT_MTRANS  (1<<6)
 #define OPT_DEMO    (1<<7)
 
@@ -228,10 +228,8 @@ void scan() {
 	if (_charlie) {
 		if (_settings.options&OPT_ROTATED)
 			_font = digit >= 12 ? asciiB_v3_c : asciiB_v3;
-			//_font = (digit%12) >= 6 ? asciiB_v3_c : asciiB_v3;
 		else
 			_font = digit >= 12 ? asciiA_v3_c : asciiA_v3;
-			//_font = (digit%12) >= 6 ? asciiA_v3_c : asciiA_v3;
 	}//if
 	if (!_enable_154) pinMode(digit_map[digit], INPUT);
 	uint32_t font = _font[_chr_buf[d+_excess_shift]];
@@ -689,18 +687,7 @@ void resetConfig() {
 void loadConfig() {
 	_brightness = _settings.brightness;
 	_brightness &= 0x03;
-	/*
-	if (_settings.options&OPT_XFONT) {
-		_font  = (_settings.options&OPT_ROTATED) ? aurebeshB : aurebeshA;
-		_onOff = aurebeshOnOff;
-	}//if
-	else {
-		_font  = (_settings.options&OPT_ROTATED) ? asciiB : asciiA;
-		_onOff = asciiOnOff;
-	}//else
-	*/
 	_font  = (_settings.options&OPT_ROTATED) ? asciiB : asciiA;
-	if (_settings.options&OPT_XFONT) _font += 0x80;
 	//_onOff = asciiOnOff;
 
 }
@@ -840,7 +827,7 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <input type='radio' name='brightness' value=3 %s> 3\
  Rotate: <input type='checkbox' name='optRotate' %s></p>\
 All Caps: <input type='checkbox' name='optToUpper' %s>\
-  Aurebesh: <input type='checkbox' name='optXfont' %s>\
+  Reserved: <input type='checkbox' name='optXfont' %s>\
   All Transitions: <input type='checkbox' name='optMtrans' %s>\
   </p>\
 <p>Time Zone (-11..14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d>\
@@ -915,7 +902,7 @@ _settings.cycle,
 (_settings.brightness&0x03) == 3 ? "checked" : "",
 _settings.options & OPT_ROTATED ? "checked" : "", 
 _settings.options & OPT_TOUPPER ? "checked" : "", 
-_settings.options & OPT_XFONT   ? "checked" : "", 
+_settings.options & OPT_NOTUSED ? "checked" : "", 
 _settings.options & OPT_MTRANS  ? "checked" : "", 
 _settings.timezone,
 _version
@@ -998,8 +985,8 @@ void handleForm() {
 	else _settings.options &= ~OPT_ROTATED;
 	if (server.arg("optToUpper")!= "") _settings.options |= OPT_TOUPPER;
 	else _settings.options &= ~OPT_TOUPPER;
-	if (server.arg("optXfont")!= "") _settings.options |= OPT_XFONT;
-	else _settings.options &= ~OPT_XFONT;
+	if (server.arg("optXfont")!= "") _settings.options |= OPT_NOTUSED;
+	else _settings.options &= ~OPT_NOTUSED;
 	if (server.arg("optMtrans")!= "") _settings.options |= OPT_MTRANS;
 	else _settings.options &= ~OPT_MTRANS;
 	if (server.arg("timezone")!= "") {
@@ -1277,7 +1264,7 @@ void showMessage(const char *sp) {
 //________________________________________________________________________________
 void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 	while (*sp) {		// process internal # tokens 1st
-		if (*sp == '~' && (strchr("~123WwRrUuDdXx", *(sp+1)))) {
+		if (*sp == '~' && (strchr("~1234WwRrUuDdXx", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
 			// c2303 add support for vertical numerics
@@ -1470,6 +1457,8 @@ void setup() {
 	//_input = 0x04;
 	if (burn_in) {
 		resetConfig();
+		strcpy(_settings.text[2], "~4");
+		strcpy(_settings.text[3], "~4%X");
 		/*
 		struct timeval n;
 		//n.tv_sec = 3600*28 -8 -60*2;
