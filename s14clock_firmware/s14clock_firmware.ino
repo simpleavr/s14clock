@@ -710,7 +710,10 @@ void setupClock() {
 		saveConfig();
 	}//if
 	prefs.getBytes((const char*) "_settings", (void *) &_settings, sizeof(_settings));
-	configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+	if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
+		configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
+	else
+		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
 	loadConfig();
 }
 
@@ -993,7 +996,10 @@ void handleForm() {
 		int8_t new_tz = atoi(server.arg("timezone").c_str());
 		if (_settings.timezone != new_tz) {
 			_settings.timezone = new_tz;
-			configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+			if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
+				configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
+			else
+				configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
 		}//if
 	}//if
 
@@ -1457,9 +1463,9 @@ void setup() {
 	//_input = 0x04;
 	if (burn_in) {
 		resetConfig();
+		/*
 		strcpy(_settings.text[2], "~4");
 		strcpy(_settings.text[3], "~4%X");
-		/*
 		struct timeval n;
 		//n.tv_sec = 3600*28 -8 -60*2;
 		//n.tv_sec = 3600*16 -8 -60*2;
