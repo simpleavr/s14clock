@@ -1,6 +1,6 @@
 # S14Clock
 
-**2013-07-25** Implement new content tokens '~+dd' and '~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
+**2013-07-25** Implement new content tokens '\~+dd' and '\~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
 
 **2013-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
 
