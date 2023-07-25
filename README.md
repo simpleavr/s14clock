@@ -1,6 +1,8 @@
 # S14Clock
 
-**2013-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make user the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
+**2013-07-25** Implement new content tokens '~+dd' and '~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
+
+**2013-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
 
 **2013-06-12** Added to main branch are 2 startup options, press-n-hold button '0' during "0000..." test screen allow resetting WIFI credentials, pressing button '0' during "FW... HW.." version display enters Burn-In mode without setup, which excercise the time showing routines without WIFI.
 

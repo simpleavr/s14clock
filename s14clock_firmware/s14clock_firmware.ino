@@ -32,6 +32,7 @@
 //         this is done by partial charliplexing the led modules
 // c230504 io pin 18 always leaks (looks like S2 chips problem) and introduce ghosting, 
 //         avoid turning on digits for blanks to make it not / less visible
+// c230725 implement new token "~+HH" and "~-HH" to add hour offset to current time
 #define USE_WIFI			// comment out to test display only
 
 
@@ -860,12 +861,14 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~2</td><td>Flower Code Numerics</td></tr>\
 <tr><td>~3</td><td>Vertical Numerics</td></tr>\
 <tr><td>~4</td><td>Aurebesh Character Set</td></tr>\
-<tr><td>~X</td><td>Message expires in 60 seconds</td></tr>\
-<tr><td>~x</td><td>Message expires in 10 seconds</td></tr>\
+<tr><td>~+dd</td><td>Add dd hours</td></tr>\
+<tr><td>~-dd</td><td>Subtract dd hours</td></tr>\
 <tr><td>~W</td><td>Worded Time Format 1</td></tr>\
 <tr><td>~w</td><td>Worded Time Format 2</td></tr>\
 <tr><td>~R</td><td>Roman Numeric Hour-Min</td></tr>\
 <tr><td>~r</td><td>Roman Numeric Hour-Min-Sec</td></tr>\
+<tr><td>~X</td><td>Message expires in 60 seconds</td></tr>\
+<tr><td>~x</td><td>Message expires in 10 seconds</td></tr>\
 <tr><td>~D</td><td>Countdown HH:MM:SS</td></tr>\
 <tr><td>~d</td><td>Countdown HH:MM</td></tr>\
 <tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
@@ -1270,13 +1273,27 @@ void showMessage(const char *sp) {
 //________________________________________________________________________________
 void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 	while (*sp) {		// process internal # tokens 1st
-		if (*sp == '~' && (strchr("~1234WwRrUuDdXx", *(sp+1)))) {
+		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
 			// c2303 add support for vertical numerics
 			//if (strchr("123", *sp)) *pOpt |= 1 << ((*sp - '1') + 8);
 			if (strchr("1234", *sp)) *pOpt |= (*sp - '0') << 8;
 			if (strchr("WwRrUuDdXx", *sp)) dp = wordTime(dp, *sp);
+			// c230725
+			if (strchr("+-", *sp) && *(sp+1) >= '0' && *(sp+1) <= '9') {
+                uint8_t add = *sp=='+' ? 1 : -1;
+				sp++;
+				int8_t hour_off = 0;
+                do {
+                    hour_off *= 10;
+                    hour_off += *sp - '0';
+					sp++;
+				} while (*sp >= '0' && *sp <= '9');
+                --sp;
+                _epoch = time(NULL) + (hour_off * 3600 * add);
+                _tm = localtime(&_epoch);
+			}//if
 		}//if
 		else {
 			if (*sp == '%' && *(sp+1) == '-' && (strchr("dmHIMSjuW", *(sp+2)))) {
@@ -1464,7 +1481,8 @@ void setup() {
 	if (burn_in) {
 		resetConfig();
 		/*
-		strcpy(_settings.text[2], "~4");
+		strcpy(_settings.text[1], "~-3%X");
+		strcpy(_settings.text[2], "~+10");
 		strcpy(_settings.text[3], "~4%X");
 		struct timeval n;
 		//n.tv_sec = 3600*28 -8 -60*2;
@@ -1475,8 +1493,9 @@ void setup() {
 		_brightness = 3;
 		_settings.cycle = 4;
 		_settings.options = OPT_TOUPPER;
+		_settings.options |= DISP_SHUTTER;
 		//_settings.options |= DISP_FLIP;
-		_settings.options |= DISP_FLASH;
+		//_settings.options |= DISP_FLASH;
 		//_settings.options |= OPT_MTRANS;
 		*/
 	}//if
