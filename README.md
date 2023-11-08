@@ -1,5 +1,7 @@
 # S14Clock
 
+**2013-11-08** Add optional POSIX TZ configuration support. This will allow daylight saving time configurations (eg. EST5EDT,M3.2.0,M11.1.0).  Enter POSIX TZ string as the 8th "Additional Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@EST5EDT" as the 8th display addn text. Configuration web page will now also detect geo-location and suggest a proper TZ value to use.
+
 **2013-07-25** Implement new content tokens '\~+dd' and '\~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
 
 **2013-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.

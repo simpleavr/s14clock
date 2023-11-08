@@ -33,6 +33,8 @@
 // c230504 io pin 18 always leaks (looks like S2 chips problem) and introduce ghosting, 
 //         avoid turning on digits for blanks to make it not / less visible
 // c230725 implement new token "~+HH" and "~-HH" to add hour offset to current time
+// c231108 add optional POSIX TZ string configuration, and allow automatic daylight saving time switching,
+//         configuration web page now detects geo-location and suggests POSIX TZ string to use
 #define USE_WIFI			// comment out to test display only
 
 
@@ -74,7 +76,7 @@ uint8_t _brightness = 3;
 
 //____ default hardware is v3-24 character version
 uint32_t _chip_id;
-char _version[14] = "FW2.02 HW3  ";
+char _version[14] = "FW2.03 HW3  ";
 uint8_t _num_of_digits = 24;
 uint8_t _enable_154 = 0;
 uint8_t _charlie = 12;
@@ -704,6 +706,33 @@ void saveConfig() {
 	//configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
 }
 //________________________________________________________________________________
+void configTm() {
+    /*
+	if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
+		configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
+	else
+		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+    */
+    // get tz strings with dst here, https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
+    //configTzTime("EST5EDT,M3.2.0,M11.1.0", NTPServer1, NTPServer2);
+	if (_settings.use[7] != 'o') {
+        // override configuration with TZ string and / or alternate NTP server
+        const char *ntp = NTPServer1;
+        if (*_settings.text[7] == '@')
+            ntp = _settings.text[7] + 1;
+        if (*_settings.addn[7] == '@')
+            configTzTime(_settings.addn[7]+1, ntp);
+            //configTzTime(_settings.addn[7]+1, ntp, NTPServer2);
+        else
+            configTime(_settings.timezone * 3600, 0, ntp);
+            //configTime(_settings.timezone * 3600, 0, ntp, NTPServer2);
+    }//if
+    else {
+        // original configuration
+		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+    }//else
+}
+//________________________________________________________________________________
 void setupClock() {
 	prefs.begin("S14Clock", true);
 	if (!prefs.isKey("_settings")) {
@@ -711,10 +740,7 @@ void setupClock() {
 		saveConfig();
 	}//if
 	prefs.getBytes((const char*) "_settings", (void *) &_settings, sizeof(_settings));
-	if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
-		configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
-	else
-		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+    configTm();
 	loadConfig();
 }
 
@@ -725,15 +751,17 @@ void notFound() {
   server.send(404, "text/plain", "Not found");
 }
 
-char htmlResponse[6000];
+char htmlResponse[8200];
 
 void handleRoot() {
-  snprintf(htmlResponse, 6000, "\
+  snprintf(htmlResponse, 8200, "\
 <!DOCTYPE html>\
   <style>\
-  body { font-family:Arial; }\
+  body { font-family:Arial; font-size:0.9em; }\
+  .msg { color:red; font-size:0.9em; }\
+  fieldset button { margin:1px; }\
   fieldset p { clear:both; padding:0px; }\
-  fieldset { background-color:gainsboro; }\
+  fieldset { line-height:1.3em; background-color:gainsboro; }\
   </style>\
 <html lang='en'>\
   <head>\
@@ -744,16 +772,23 @@ void handleRoot() {
   <fieldset>\
 <legend style='color:dimgrey'><b>Seg14 Clock</b></legend>\
 <a href=\"/button1\"><button>Count Down</button></a>\
-  <a href=\"/button2\"><button>Advance Display</button></a>\
-  <a href=\"/reset\"><button>Reset Configuration</button></a><br><br>\
+<a href=\"/button2\"><button>Advance Display</button></a>\
+<a href=\"/reset\"><button>Reset Configuration</button></a><br>\
 <a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
 &nbsp;&nbsp;via AP menu Reset entry\
+<br><label class='msg'>if city is resolved, TZ most accurate, sugguest to use</label><br>\
+<label id='olson_tz'>Unknown/City</label>, <label id='posix_tz'>GMT0</label>\
+&nbsp;<button onClick='loadTz()'>Use</button>\
+<script>function loadTz() {\
+    document.getElementById('IDaddnH').value = '@' + document.getElementById('posix_tz').textContent;\
+    document.getElementById('IDuseH').checked = false;\
+}</script>\
   </fieldset><br>\
   <form action='/action_page'>\
 <fieldset>\
 <legend style='color:dimgrey'><b>Display Contents</b></legend>\
 use ~? (custom), %%? (strtime) tokens<br>\
-<table cellspacing='2px' cellpadding='2px'>\
+<table cellspacing='1px' cellpadding='1px'>\
 <tr>\
 <td>Content</td>\
 <td>End With</td>\
@@ -794,10 +829,12 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='12'>  </td>\
 <td><input type='checkbox' name='useG' %s></td>\
 </tr>\
+<td class='msg'>for override, NTP, ex. @ntp.us</td>\
+<td colspan='2' class='msg'>TZ, ex. @EST5</td>\
 <tr>\
 <td><input type='text' name='textH' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='12'>  </td>\
-<td><input type='checkbox' name='useH' %s></td>\
+<td><input type='text' name='addnH' id='IDaddnH' value='%-.24s' size='8' maxlength='24'>  </td>\
+<td><input type='checkbox' name='useH' id='IDuseH' %s></td>\
 </tr>\
 <tr>\
 <td>Content (Count Down / Up)</td>\
@@ -834,8 +871,8 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
   Reserved: <input type='checkbox' name='optXfont' %s>\
   All Transitions: <input type='checkbox' name='optMtrans' %s>\
   </p>\
-<p>Time Zone (-11..14): <input type='number' name='timezone' size=3 min=-11 max=14 value=%d>\
-&nbsp;<label id='suggest_tz'></label></p>\
+<p>GMT &#xb1;hrs (-11..14): <input type='number' name='timezone' size=2 min=-11 max=14 value=%d>\
+ <label id='suggest_tz'></label> (overridable)</p>\
 <input type='submit' value='Save Configuration'>\
 &nbsp;&nbsp;%s\
 </fieldset>\
@@ -875,11 +912,31 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~u</td><td>Countup HH:MM</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
+  <br><div class='msg'> The 8th 'content' / 'end with' entries also work as overrides for alternate NTP server and POSIX TZ string (daylight saving time possible), \
+  prefix your settings with '@' and do not check the 'use' box.</div><br>\
+  Useful links<br>\
+  <a href=\"https://simpleavr.github.io/s14clock\">Main project page</a><br>\
+  <a href=\"https://github.com/simpleavr/s14clock\">Project github page</a> README.md details changes<br>\
+  <a href=\"https://github.com/simpleavr/s14clock/discussions\">Project discussions</a> troubleshooting and more<br>\
+  <a href=\"https://github.com/simpleavr/s14clock/wiki\">Project wiki page</a> kit building help<br>\
+  <a href=\"https://www.tindie.com/orders/428141/\">Tindie product page</a> if you need more<br>\
+  <br>\
   </fieldset><br>\
-  <script>document.getElementById('suggest_tz').innerHTML = 'Suggest  -' + (new Date().getTimezoneOffset() / 60);</script>\
+  <script src='https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js'></script>\
+  <script>\
+    document.getElementById('suggest_tz').innerHTML = '&nbsp;suggest  -' + (new Date().getTimezoneOffset() / 60);\
+  Papa.parse('https://raw.githubusercontent.com/nayarsystems/posix_tz_db/master/zones.csv', {\
+  download: true,\
+  complete: function(results) {\
+    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;\
+    document.getElementById('olson_tz').innerHTML = tz;\
+    document.getElementById('posix_tz').innerHTML = results.data.filter(el => el[0] == tz)[0][1];\
+  } });\
+  </script>\
   </body>\
 </html>\
 ",
+/* TZ format, Olson=America/New_York, POSIX=EST5EDT,M3.2.0/02:00:00,M11.1.0,02:00:00 */
 _settings.text[0], _settings.addn[0], _settings.use[0]=='o' ? "checked" : "",
 _settings.text[1], _settings.addn[1], _settings.use[1]=='o' ? "checked" : "",
 _settings.text[2], _settings.addn[2], _settings.use[2]=='o' ? "checked" : "",
@@ -999,10 +1056,13 @@ void handleForm() {
 		int8_t new_tz = atoi(server.arg("timezone").c_str());
 		if (_settings.timezone != new_tz) {
 			_settings.timezone = new_tz;
+            /*
 			if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
 				configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
 			else
 				configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
+            */
+            configTm();
 		}//if
 	}//if
 
