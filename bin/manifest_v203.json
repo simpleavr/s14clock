@@ -1,0 +1,15 @@
+{
+  "name": "S14Clock v2.03 common firmware",
+  "version": "2.03",
+  "builds": [
+    {
+      "chipFamily": "ESP32-S2",
+	  "new_install_prompt_erase": true,
+      "parts": [
+        { "path": "bootloader.bin", "offset": 4096 },
+        { "path": "partitions.bin", "offset": 32768 },
+        { "path": "firmware_203.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}
