@@ -7,9 +7,15 @@
       name="description"
       content="Easily allow users to install S14Clock firmware on the web."
     />
-    <meta name="viewport" content="width=device-width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="dark light" />
     <style>
+        * { box-sizing: border-box; }
+        .column { float: left; padding: 10px; }
+        .left { width: 70%; }
+        .right { width: 30%; color: olive; }
+        /* Clear floats after the columns */
+        .row:after { content: ""; display: table; clear: both; }
       body {
         font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI",
           Roboto, Ubuntu, sans-serif;
@@ -18,25 +24,12 @@
         line-height: 1.4;
       }
       .content {
-        max-width: 600px;
+        max-width: 1080px;
         margin: 0 auto;
         padding: 12px;
       }
-      h2 {
-        margin-top: 2em;
-      }
-      h3 {
-        margin-top: 1.5em;
-      }
-      a {
-        color: #03a9f4;
-      }
-      .invisible {
-        visibility: hidden;
-      }
-      .hidden {
-        display: none;
-      }
+      .invisible { visibility: hidden; }
+      .hidden { display: none; }
       esp-web-install-button[install-unsupported] {
         visibility: inherit;
       }
@@ -54,43 +47,30 @@
         font-style: italic;
         margin-top: 16px;
       }
-      table {
-        border-spacing: 0;
-      }
-      td {
-        padding: 8px;
-        border-bottom: 1px solid #ccc;
-      }
+      table { border-spacing: 0; }
+      td { padding: 8px; border-bottom: 1px solid #ccc; }
       .radios li {
         list-style: none;
         line-height: 2em;
-      }
-      @media (prefers-color-scheme: dark) {
-        body {
-          background-color: #333;
-          color: #fff;
-        }
-        a {
-          color: #58a6ff;
-        }
       }
     </style>
     <script type="module" src="https://unpkg.com/tasmota-esp-web-tools@8.1.2/dist/web/install-button.js?module"></script>
   </head>
   <body>
     <div class="content">
-      <h1>S14Clock Firmware Installer</h1>
+        <h1>S14Clock Firmware Installer<hr></h1>
+    <div class="column left">
 	    <h2>Instructions</h2>
 	    <ul>
-		    <li>Connect clock via usb-c to computer</li>
-		    <li>Select formware and hit the blue "Connect" button below, a pop-up window will appear</li>
-		    <li>On the clock side, press and hold '0', then press 'RST', release 'RST', then finally release '0'</li>
-		    <li>Select "ESP32-S2 (COM?) Paired" entry and then hit the greem "Connect" button</li>
-		    <li>Select the "Install ....Firmware..." option, confirm by clicking "Install"</li>
-		    <li>Popup shows progress on Prepare Installation, Erasing, Installing,.., this takes 3 or 4 minutes in total</li>
+		    <li>Connect clock via usb-c to computer.</li>
+		    <li>Select formware and hit the blue "Connect" button below, a pop-up window will appear.</li>
+		    <li>On the clock side, press and hold '0', then press 'RST', release 'RST', and finally release '0'.</li>
+            <li>You should see an "ESP32-S2 (COM?)" entry in the pop-up window, if not, release last step.</li>
+		    <li>Select "ESP32-S2 (COM?)" entry and then hit the greem "Connect" button.</li>
+		    <li>Select the "Install ....Firmware..." option, confirm by clicking "Install".</li>
+		    <li>Popup shows progress on Prepare Installation, Erasing, Installing,.., this takes 3 or 4 minutes in total.</li>
 	    </ul>
       <p>See the <a href="https://simpleavr.github.io/s14clock/index.html">S14Clock Project</a>.</p>
-	  <p>If this ESP32 Web Tools fails to work properly, please try <a href="https://github.com/simpleavr/s14clock/wiki.html/#erase-and-flash-all">the AdaFruit one, it works better</a>.</p>
       <p>Select your product</p>
       <ul class="radios">
         <li><label><input type="radio" name="type" value="v203" /> S14Clock All Hardware Versions (Firmware 2.03)</label></li>
@@ -101,12 +81,17 @@
       <p class="button-row" align="center">
         <esp-web-install-button class="invisible"></esp-web-install-button>
       </p>
-
-      <div class="footer">
-        <a href="https://github.com/simpleavr/S14Clock"
-          >S14Clock</a
-        > &mdash;
+    </div>
+    <div class="column right">
+        <ul style="list-style-type:square; padding-left:0px">
+        <li> ensure you use a good data cable</li>
+        <li> connect via usb-c to usb-c if possible</li>
+        <li> you will need to enter wifi credential again after upgrade</li>
+        <li> if this page installer fails to work properly, try <a href="https://github.com/simpleavr/s14clock/wiki.html/#erase-and-flash-all">manual install via the AdaFruit Web Tool</a></li>
+        </ul>
         Installer powered by <a href="https://esphome.github.io/esp-web-tools/">ESP Web Tools</a>.
+    </div>
+
     </div>
     <script>
       document.querySelectorAll('input[name="type"]').forEach(radio =>

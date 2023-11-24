@@ -1,14 +1,19 @@
 # S14Clock
 
-**2013-11-08** Add optional POSIX TZ configuration support. This will allow daylight saving time configurations (eg. EST5EDT,M3.2.0,M11.1.0).  Enter POSIX TZ string as the 8th "Additional Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@EST5EDT" as the 8th display addn text. Configuration web page will now also detect geo-location and suggest a proper TZ value to use.
+[Install latest firmware, pick v2.03](https://simpleavr.github.io/s14clock/install.html)
 
-**2013-07-25** Implement new content tokens '\~+dd' and '\~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
+**2023-11-27** NTP server and POSIX TZ configuration changed from using 8th content slot to a new storage space. The new fields are 40 characters wide and
+should be able to hold the extra long TZ strings.
 
-**2013-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
+**2023-11-08** V2.03 Add optional POSIX TZ configuration support. This will allow daylight saving time configurations (eg. EST5EDT,M3.2.0,M11.1.0).  Enter POSIX TZ string as the 8th "Additional Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@EST5EDT" as the 8th display addn text. Configuration web page will now also detect geo-location and suggest a proper TZ value to use. Feature available in bin/firmware_203.bin
 
-**2013-06-12** Added to main branch are 2 startup options, press-n-hold button '0' during "0000..." test screen allow resetting WIFI credentials, pressing button '0' during "FW... HW.." version display enters Burn-In mode without setup, which excercise the time showing routines without WIFI.
+**2023-07-25** Implement new content tokens '\~+dd' and '\~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
 
-**2013-06-07** V2.02 common firmware auto-detects and support all (V3, V2-24, V2-12) hardware designs. V3 hardware design eliminates 74HC154 4-to-16 line decoder. V2.02 software adds charliplexing to V2.01 led multiplexing scheme and achieves 14 x 24 (336 segments) direct driving with 26 IO pins.
+**2023-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
+
+**2023-06-12** Added to main branch are 2 startup options, press-n-hold button '0' during "0000..." test screen allow resetting WIFI credentials, pressing button '0' during "FW... HW.." version display enters Burn-In mode without setup, which excercise the time showing routines without WIFI.
+
+**2023-06-07** V2.02 common firmware auto-detects and support all (V3, V2-24, V2-12) hardware designs. V3 hardware design eliminates 74HC154 4-to-16 line decoder. V2.02 software adds charliplexing to V2.01 led multiplexing scheme and achieves 14 x 24 (336 segments) direct driving with 26 IO pins.
 
 S14Clock is a bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment display.
 
@@ -63,3 +68,9 @@ V2.02 firmware (2023-05-29)
 - substitute underscore with space for ad-hoc messages
 - ad-hoc messages now follows transition in
 - implements %-[dmHIMSjuW] tokens in strftime() to suppress leading zeros and spaces
+
+V2.03 firmware (2023-11-27)
+
+- implement new content tokens '\~+dd' and '\~-dd' to adjust current time, useful for multi-city display.
+- allows NTP server override and POSIX TZ support, allowing standard and daylight saving time switching.
+

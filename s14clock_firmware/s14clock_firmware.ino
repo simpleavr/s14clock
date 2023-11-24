@@ -35,6 +35,7 @@
 // c230725 implement new token "~+HH" and "~-HH" to add hour offset to current time
 // c231108 add optional POSIX TZ string configuration, and allow automatic daylight saving time switching,
 //         configuration web page now detects geo-location and suggests POSIX TZ string to use
+// c231125 add alt_ntp and posix_tz to settings and have them as dedicated configurations for alternate ntp server and posix timezone setup
 #define USE_WIFI			// comment out to test display only
 
 
@@ -120,6 +121,8 @@ static struct {
 	uint8_t cycle;				// seconds to cycle to next content, 0 means no cycling
 	// options BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font, BIT6 rotate transition
 	uint8_t options;			
+	char alt_ntp[41];
+	char posix_tz[41];
 	char reserved[7];
 } _settings;
 
@@ -707,12 +710,17 @@ void saveConfig() {
 }
 //________________________________________________________________________________
 void configTm() {
+    const char *ntp = NTPServer1;
+	if (*_settings.alt_ntp && *_settings.alt_ntp != ' ') ntp = _settings.alt_ntp;
+	if (*_settings.posix_tz && *_settings.posix_tz != ' ')
+        configTzTime(_settings.posix_tz, ntp, NTPServer2);
+    else
+		configTime(_settings.timezone * 3600, 0, ntp, NTPServer2);
     /*
 	if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
 		configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
 	else
 		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
-    */
     // get tz strings with dst here, https://github.com/nayarsystems/posix_tz_db/blob/master/zones.csv
     //configTzTime("EST5EDT,M3.2.0,M11.1.0", NTPServer1, NTPServer2);
 	if (_settings.use[7] != 'o') {
@@ -731,6 +739,7 @@ void configTm() {
         // original configuration
 		configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
     }//else
+    */
 }
 //________________________________________________________________________________
 void setupClock() {
@@ -776,12 +785,11 @@ void handleRoot() {
 <a href=\"/reset\"><button>Reset Configuration</button></a><br>\
 <a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
 &nbsp;&nbsp;via AP menu Reset entry\
-<br><label class='msg'>if city is resolved, TZ most accurate, sugguest to use</label><br>\
+<br><label class='msg'>If city is resolved, TZ most accurate, sugguest to use</label><br>\
 <label id='olson_tz'>Unknown/City</label>, <label id='posix_tz'>GMT0</label>\
 &nbsp;<button onClick='loadTz()'>Use</button>\
 <script>function loadTz() {\
-    document.getElementById('IDaddnH').value = '@' + document.getElementById('posix_tz').textContent;\
-    document.getElementById('IDuseH').checked = false;\
+    document.getElementById('IDposixTZ').value = document.getElementById('posix_tz').textContent;\
 }</script>\
   </fieldset><br>\
   <form action='/action_page'>\
@@ -829,12 +837,10 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='12'>  </td>\
 <td><input type='checkbox' name='useG' %s></td>\
 </tr>\
-<td class='msg'>for override, NTP, ex. @ntp.us</td>\
-<td colspan='2' class='msg'>TZ, ex. @EST5</td>\
 <tr>\
 <td><input type='text' name='textH' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnH' id='IDaddnH' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useH' id='IDuseH' %s></td>\
+<td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='24'>  </td>\
+<td><input type='checkbox' name='useH' %s></td>\
 </tr>\
 <tr>\
 <td>Content (Count Down / Up)</td>\
@@ -842,6 +848,14 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <tr>\
 <td><input type='text' name='textX' value='%s' size='24' maxlength='24' autofocus>  </td>\
 <td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>\
+</tr>\
+<tr>\
+<td><input type='text' name='altNTP' value='%s' size='24' maxlength='40' autofocus>  </td>\
+<td>NTP Override</td>\
+</tr>\
+<tr>\
+<td><input type='text' name='posixTZ' id='IDposixTZ' value='%s' size='24' maxlength='40' autofocus>  </td>\
+<td>Posix TimeZone</td>\
 </tr>\
 </table>\
 <p>Countdown Increment:<br>\
@@ -912,8 +926,7 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~u</td><td>Countup HH:MM</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
-  <br><div class='msg'> The 8th 'content' / 'end with' entries also work as overrides for alternate NTP server and POSIX TZ string (daylight saving time possible), \
-  prefix your settings with '@' and do not check the 'use' box.</div><br>\
+  <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>\
   Useful links<br>\
   <a href=\"https://simpleavr.github.io/s14clock\">Main project page</a><br>\
   <a href=\"https://github.com/simpleavr/s14clock\">Project github page</a> README.md details changes<br>\
@@ -946,6 +959,7 @@ _settings.text[5], _settings.addn[5], _settings.use[5]=='o' ? "checked" : "",
 _settings.text[6], _settings.addn[6], _settings.use[6]=='o' ? "checked" : "",
 _settings.text[7], _settings.addn[7], _settings.use[7]=='o' ? "checked" : "",
 _settings.text[8], _settings.addn[8],
+_settings.alt_ntp, _settings.posix_tz,
 _settings.use[8]<=1 ? "checked" : "",
 _settings.use[8]==5 ? "checked" : "",
 _settings.use[8]==10 ? "checked" : "",
@@ -1013,6 +1027,7 @@ void handleReset() {
 }
 
 void handleForm() {
+    uint8_t config_time = 0;
 	strcpy(_settings.text[0], server.arg("textA").c_str());
 	strcpy(_settings.text[1], server.arg("textB").c_str());
 	strcpy(_settings.text[2], server.arg("textC").c_str());
@@ -1040,6 +1055,10 @@ void handleForm() {
 	_settings.use[6] = server.arg("useG") != "" ? server.arg("useG")[0] : ' ';
 	_settings.use[7] = server.arg("useH") != "" ? server.arg("useH")[0] : ' ';
 	_settings.use[8] = (char) (server.arg("useX") != "" ? atoi(server.arg("useX").c_str()) : 1);
+	if (strcmp(_settings.alt_ntp, server.arg("altNTP").c_str()) || strcmp(_settings.posix_tz, server.arg("posixTZ").c_str())) 
+        config_time++;
+	strcpy(_settings.alt_ntp, server.arg("altNTP").c_str());
+	strcpy(_settings.posix_tz, server.arg("posixTZ").c_str());
 	_settings.options &= ~0x07;
 	_settings.options |= (char) (server.arg("transition") != "" ? atoi(server.arg("transition").c_str()) : 0);
 	if (server.arg("cycle")!= "") _settings.cycle = atoi(server.arg("cycle").c_str());
@@ -1054,17 +1073,14 @@ void handleForm() {
 	else _settings.options &= ~OPT_MTRANS;
 	if (server.arg("timezone")!= "") {
 		int8_t new_tz = atoi(server.arg("timezone").c_str());
+        // todo detect all tz changes and reload
 		if (_settings.timezone != new_tz) {
 			_settings.timezone = new_tz;
-            /*
-			if (*_settings.text[7] == '@' && _settings.use[7] != 'o')
-				configTime(_settings.timezone * 3600, 0, _settings.text[7] + 1);
-			else
-				configTime(_settings.timezone * 3600, 0, NTPServer1, NTPServer2);
-            */
-            configTm();
+            config_time++;
 		}//if
 	}//if
+
+    if (config_time) configTm();
 
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
