@@ -36,6 +36,9 @@
 // c231108 add optional POSIX TZ string configuration, and allow automatic daylight saving time switching,
 //         configuration web page now detects geo-location and suggests POSIX TZ string to use
 // c231125 add alt_ntp and posix_tz to settings and have them as dedicated configurations for alternate ntp server and posix timezone setup
+// c231207 add date countdown
+//         0.........0.........0.........0.........
+//         ~<1225? DAYS PAST: DAYS TIL> CHRISTMAS
 #define USE_WIFI			// comment out to test display only
 
 
@@ -113,7 +116,7 @@ const uint32_t *asciiB_c = asciiB_v3_c;
 #define OPT_DEMO    (1<<7)
 
 static struct {
-	char text[9][25];
+	char text[9][61];
 	char addn[9][25];
 	char use[9];
 	int8_t timezone;
@@ -121,8 +124,8 @@ static struct {
 	uint8_t cycle;				// seconds to cycle to next content, 0 means no cycling
 	// options BIT0-2, transition effects, BIT3 rotated display, BIT4 toupper, BIT5 alternate font, BIT6 rotate transition
 	uint8_t options;			
-	char alt_ntp[41];
-	char posix_tz[41];
+	char alt_ntp[61];
+	char posix_tz[61];
 	char reserved[7];
 } _settings;
 
@@ -670,18 +673,18 @@ void resetConfig() {
 	}//else
 	strcpy(_settings.text[3], "~R");
 	strcpy(_settings.addn[3], "");
-	strcpy(_settings.text[4], "NEW YORK");
+    strcpy(_settings.text[4], "NEW YORK");
 	strcpy(_settings.addn[4], "%T");
-	strcpy(_settings.text[5], "STORE CLOSED");
+	strcpy(_settings.text[5], "~<1225? DAYS TIL CHRISTMAS");
 	strcpy(_settings.addn[5], "");
-	strcpy(_settings.text[6], "HOTDOG $4.50");
-	strcpy(_settings.addn[6], "%R");
+	strcpy(_settings.text[6], "~>191230? DAYS SINC 1ST ORDER");
+	strcpy(_settings.addn[6], "");
 	strcpy(_settings.text[7], "PLS WAIT TO BE SEATED");
 	strcpy(_settings.addn[7], "");
 	strcpy(_settings.text[8], "BE BACK IN");
 	strcpy(_settings.addn[8], "~D");
-	_settings.use[0] = _settings.use[1] = _settings.use[2] = _settings.use[3] = 'o';
-	_settings.use[4] = _settings.use[5] = _settings.use[6] = _settings.use[7] = ' ';
+	_settings.use[0] = _settings.use[1] = _settings.use[5] = _settings.use[6] = 'o';
+	_settings.use[2] = _settings.use[3] = _settings.use[4] = _settings.use[7] = ' ';
 	_settings.use[8] = (char) 1;
 	_settings.cycle = 6;
 	_settings.brightness = 2;
@@ -803,42 +806,42 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <td>Use</td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textA' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textA' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useA' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textB' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textB' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useB' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textC' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textC' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useC' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textD' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textD' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useD' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textE' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textE' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useE' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textF' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textF' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useF' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textG' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='12'>  </td>\
+<td><input type='text' name='textG' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
+<td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useG' %s></td>\
 </tr>\
 <tr>\
-<td><input type='text' name='textH' value='%-.24s' size='24' maxlength='24' autofocus>  </td>\
+<td><input type='text' name='textH' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
 <td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='24'>  </td>\
 <td><input type='checkbox' name='useH' %s></td>\
 </tr>\
@@ -850,11 +853,11 @@ use ~? (custom), %%? (strtime) tokens<br>\
 <td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>\
 </tr>\
 <tr>\
-<td><input type='text' name='altNTP' value='%s' size='24' maxlength='40' autofocus>  </td>\
+<td><input type='text' name='altNTP' value='%s' size='24' maxlength='60' autofocus>  </td>\
 <td>NTP Override</td>\
 </tr>\
 <tr>\
-<td><input type='text' name='posixTZ' id='IDposixTZ' value='%s' size='24' maxlength='40' autofocus>  </td>\
+<td><input type='text' name='posixTZ' id='IDposixTZ' value='%s' size='24' maxlength='60' autofocus>  </td>\
 <td>Posix TimeZone</td>\
 </tr>\
 </table>\
@@ -924,6 +927,8 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~d</td><td>Countdown HH:MM</td></tr>\
 <tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
 <tr><td>~u</td><td>Countup HH:MM</td></tr>\
+<tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days behind date, skip otherwise</td></tr>\
+<tr><td>~&lt;[[yy]yy]mmdd?</td><td>Days before date, skip otherwise</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
   <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>\
@@ -1348,8 +1353,9 @@ void showMessage(const char *sp) {
 
 //________________________________________________________________________________
 void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
+    char *dpSav = dp;
 	while (*sp) {		// process internal # tokens 1st
-		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-", *(sp+1)))) {
+		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-<>", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
 			// c2303 add support for vertical numerics
@@ -1370,6 +1376,53 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                 _epoch = time(NULL) + (hour_off * 3600 * add);
                 _tm = localtime(&_epoch);
 			}//if
+            // ~<1225? days offset if less than date
+            // ~>1225? days offset if greater than date
+			if (*sp == '<' || *sp == '>') {   // cc231207 date counting
+                char check = *sp;
+                sp++;
+                int year_set = -1, century = 1;
+                if (*(sp+8) == '?') {
+                  century = (*sp-'0') * 10 + (*(++sp)-'0');
+                  if (century >= 19) century -= 19;
+                  else century = 1;   // invalid if before 1900, assume 20xx
+                  sp++;
+                }//if
+                if (*(sp+6) == '?') {
+                  year_set = (*sp-'0') * 10 + (*(++sp)-'0');
+                  year_set += century * 100;
+                  sp++;
+                }//if
+                if (*(sp+4) == '?') {
+                  time_t refA=0, refB=0;
+                  struct tm *tmC = localtime(&_epoch);;
+                  // set specific date
+                  tmC->tm_hour = 0;
+                  tmC->tm_min = 0;
+                  tmC->tm_sec = 0;
+                  refA = mktime(tmC);
+                  if (year_set >= 0) tmC->tm_year = year_set;
+                  tmC->tm_mon = (*sp-'0') * 10 + (*(++sp)-'0');
+                  tmC->tm_mon--;    // tm_mon is zero based
+                  tmC->tm_mday = (*(++sp)-'0') * 10 + (*(++sp)-'0');
+                  sp++;
+                  refB = mktime(tmC);
+                  //tmC = localtime(&refC);;
+                  //refC -= _epoch;
+                  refA -= refB;
+                  refA /= (3600 * 24);
+                  //if (refA < 0) {
+                  if ((check == '<' && refA < 0) || (check == '>' && refA > 0)) {
+                      sprintf(dp, "%d", labs(refA));
+                      dp += strlen(dp);
+                  }//if
+                  else {
+                    dp = dpSav;
+                    *dp++ = '~'; *dp++ = '~';   // signal to skip show
+                    break;
+                  }//else
+                }//if
+            }//if
 		}//if
 		else {
 			if (*sp == '%' && *(sp+1) == '-' && (strchr("dmHIMSjuW", *(sp+2)))) {
@@ -1394,7 +1447,7 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 }
 
 //________________________________________________________________________________
-void showTime(uint8_t format, uint8_t opt=0) {
+int showTime(uint8_t format, uint8_t opt=0) {
 	char content[50] = "";
 	char buf[50] = "";
 	uint8_t pos = 0;
@@ -1411,6 +1464,8 @@ void showTime(uint8_t format, uint8_t opt=0) {
 	if (_settings.options&OPT_TOUPPER) use_opt |= DISP_UPPERCASE;
 
 	macroSub(&use_opt, content, cp);
+    // "~~" returned from macroSub means to skip, cc231207
+    if (content[0] == '~' && content[1] == '~') return 0;
 	strftime(buf, sizeof(buf), content, _tm);
 
 	pos = strlen(buf);
@@ -1429,6 +1484,7 @@ void showTime(uint8_t format, uint8_t opt=0) {
 	}//if
 
 	writeString(buf, use_opt);
+    return 1;
 }
 //
 
@@ -1680,16 +1736,16 @@ void loop() {
 		save_time = current_time;
 		if (!_input) {	// normal mode, check to automatic cycling of contents
 			showTime(_mode, opt);
-			if (cycle) {
-				cycle--;
-			}//if
-			else {
-				if (_settings.cycle && !_countdown) {		// advance content, set timer for next advance
-					_input = 2;
-					cycle = _settings.cycle;
-					//_next_transition = _settings.options&0x07;
-				}//if
-			}//else
+            if (cycle) {
+                cycle--;
+            }//if
+            else {
+                if (_settings.cycle && !_countdown) {		// advance content, set timer for next advance
+                    _input = 2;
+                    cycle = _settings.cycle;
+                    //_next_transition = _settings.options&0x07;
+                }//if
+            }//else
 		}//if
 		else {							// in fixed message mode
 			if (_input & 0x08) {		// with expiry

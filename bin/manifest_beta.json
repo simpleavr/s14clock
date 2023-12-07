@@ -1,0 +1,15 @@
+{
+  "name": "S14Clock beta common firmware",
+  "version": "beta",
+  "builds": [
+    {
+      "chipFamily": "ESP32-S2",
+	  "new_install_prompt_erase": false,
+      "parts": [
+        { "path": "bootloader.bin", "offset": 4096 },
+        { "path": "partitions.bin", "offset": 32768 },
+        { "path": "firmware_beta.bin", "offset": 65536 }
+      ]
+    }
+  ]
+}
