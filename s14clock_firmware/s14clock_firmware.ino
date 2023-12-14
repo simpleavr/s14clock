@@ -39,6 +39,8 @@
 // c231207 add date countdown
 //         0.........0.........0.........0.........
 //         ~<1225? DAYS PAST: DAYS TIL> CHRISTMAS
+// c231210 add ~= token to reversed direction Shift and Drip transactions, i.e. from right to left
+//         fix bug in ~-?? time offset
 #define USE_WIFI			// comment out to test display only
 
 
@@ -107,6 +109,7 @@ const uint32_t *asciiB_c = asciiB_v3_c;
 #define DISP_UPPERCASE		(1<<4)
 #define DISP_REENTRANT		(1<<5)
 #define DISP_FORCE			(1<<6)
+#define DISP_TRANSOPT       (1<<7)
 
 
 #define OPT_ROTATED	(1<<3)
@@ -340,39 +343,53 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 	switch (opt&0x0f) {
 		case DISP_SHUTTER:
 			{
-				const char *p=s;
-				uint8_t i=0;
 				clearAll();
-				delay(30);
-				writeString(s, opt|DISP_REENTRANT);
-				delay(60);
-				while (*p) {
-					writeAscii(i, *p == ' ' ? ' ' : '-', opt);
-					i++; p++;
-				}//while
-				delay(60);
+				uint8_t c=1;
+                if (opt & DISP_TRANSOPT) c++;
+                while (c--) {
+                    delay(30);
+                    writeString(s, opt|DISP_REENTRANT);
+                    delay(60);
+                    uint8_t i=0;
+                    const char *p=s;
+                    while (*p) {
+                        writeAscii(i, *p == ' ' ? ' ' : '-', opt);
+                        i++; p++;
+                    }//while
+                    delay(60);
+                }//while
 			}
 			break;
 		case DISP_SHIFT:
 			{
 				//clearAll();
+				int8_t dir=1;
+                if (opt & DISP_TRANSOPT) dir = -1;
 				uint8_t j=(_num_of_digits-1);
 				_last_string[j] = '\0';
 				const char *lp = _last_string;
+                if (dir < 0) lp += j;
 				while (j--) {
-					const char *p = lp++;
+					const char *p = lp;
 					//uint8_t done=0;
 					//clearAll();
 					for (uint8_t i=0;i<24;i++) {
 						//if (!*p) done = 1;
 						//writeAscii(i, done ? ' ' : *p, opt);
-						if (j == i) p = s;
-						writeAscii(i, *p ? *p : ' ', opt);
-						p++;
+                        if (dir > 0) {
+                            if (j == i) p = s;
+                            writeAscii(i, *p ? *p : ' ', opt);
+                        }//if
+                        else {
+                            if (j == i) p = s + _num_of_digits - 1;
+                            writeAscii(23-i, *p ? *p : ' ', opt);
+                        }//else
+						p += dir;
 					}//for
+                    lp += dir;
 					delay(20);
 				}//while
-			}
+            }
 			break;
 		case DISP_DRIP:
 			/*
@@ -387,19 +404,22 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			*/
 			{
 				clearAll();
-				const char *p = s;
-				uint8_t j=0;
+				int8_t dir=1;
+                if (opt & DISP_TRANSOPT) dir = -1;
+				const char *p = dir > 0 ? s : s+_num_of_digits-1;;
+				int8_t j=0;
 				while (*p) {
 					if (*p != ' ') {
-						for (uint8_t i=(_num_of_digits-1);i>j;i--) {
-							_chr_buf[i] = ' ';
+						for (int8_t i=(_num_of_digits-1);i>j;i--) {
+                            int8_t k = dir>0 ? i : _num_of_digits-i-1;
+							_chr_buf[k] = ' ';
 							delay(5);
-							writeAscii(i-1, *p, opt);
+							writeAscii(k-dir, *p, opt);
 							delay(10);
 						}//for
 					}//if
 					j++;
-					p++;
+					p += dir;
 				}//while
 			}
 			break;
@@ -677,7 +697,7 @@ void resetConfig() {
 	strcpy(_settings.addn[4], "%T");
 	strcpy(_settings.text[5], "~<1225? DAYS TIL CHRISTMAS");
 	strcpy(_settings.addn[5], "");
-	strcpy(_settings.text[6], "~>191230? DAYS SINC 1ST ORDER");
+	strcpy(_settings.text[6], "~>191231? DAYS SINCE COVID");
 	strcpy(_settings.addn[6], "");
 	strcpy(_settings.text[7], "PLS WAIT TO BE SEATED");
 	strcpy(_settings.addn[7], "");
@@ -763,10 +783,10 @@ void notFound() {
   server.send(404, "text/plain", "Not found");
 }
 
-char htmlResponse[8200];
+char htmlResponse[8400];
 
 void handleRoot() {
-  snprintf(htmlResponse, 8200, "\
+  snprintf(htmlResponse, 8400, "\
 <!DOCTYPE html>\
   <style>\
   body { font-family:Arial; font-size:0.9em; }\
@@ -927,8 +947,9 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~d</td><td>Countdown HH:MM</td></tr>\
 <tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
 <tr><td>~u</td><td>Countup HH:MM</td></tr>\
-<tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days behind date, skip otherwise</td></tr>\
+<tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days after date, skip otherwise</td></tr>\
 <tr><td>~&lt;[[yy]yy]mmdd?</td><td>Days before date, skip otherwise</td></tr>\
+<tr><td>~=</td><td>Reverse direction on transitions</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
   <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>\
@@ -1355,7 +1376,7 @@ void showMessage(const char *sp) {
 void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
     char *dpSav = dp;
 	while (*sp) {		// process internal # tokens 1st
-		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-<>", *(sp+1)))) {
+		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-<>=", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
 			// c2303 add support for vertical numerics
@@ -1364,7 +1385,7 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
 			if (strchr("WwRrUuDdXx", *sp)) dp = wordTime(dp, *sp);
 			// c230725
 			if (strchr("+-", *sp) && *(sp+1) >= '0' && *(sp+1) <= '9') {
-                uint8_t add = *sp=='+' ? 1 : -1;
+                int8_t add = *sp=='+' ? 1 : -1;
 				sp++;
 				int8_t hour_off = 0;
                 do {
@@ -1376,9 +1397,14 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                 _epoch = time(NULL) + (hour_off * 3600 * add);
                 _tm = localtime(&_epoch);
 			}//if
+            // ~= left-to-right on shift and drip transitions
+			if (*sp == '=') {   // cc231212 transition direction
+              *pOpt |= DISP_TRANSOPT;
+            }//if
             // ~<1225? days offset if less than date
             // ~>1225? days offset if greater than date
 			if (*sp == '<' || *sp == '>') {   // cc231207 date counting
+                int yearOn = 0;
                 char check = *sp;
                 sp++;
                 int year_set = -1, century = 1;
@@ -1391,6 +1417,7 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                 if (*(sp+6) == '?') {
                   year_set = (*sp-'0') * 10 + (*(++sp)-'0');
                   year_set += century * 100;
+                  yearOn++;
                   sp++;
                 }//if
                 if (*(sp+4) == '?') {
@@ -1407,13 +1434,21 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                   tmC->tm_mday = (*(++sp)-'0') * 10 + (*(++sp)-'0');
                   sp++;
                   refB = mktime(tmC);
-                  //tmC = localtime(&refC);;
-                  //refC -= _epoch;
-                  refA -= refB;
-                  refA /= (3600 * 24);
-                  //if (refA < 0) {
-                  if ((check == '<' && refA < 0) || (check == '>' && refA > 0)) {
-                      sprintf(dp, "%d", labs(refA));
+                  int diff = (refA - refB) / (3600 * 24);
+                  if (!yearOn) {
+                      if (check == '<' && diff > 0) {   // assume next year
+                          tmC->tm_year++;
+                          refB = mktime(tmC);
+                          diff = (refA - refB) / (3600 * 24);
+                      }//if
+                      if (check == '>' && diff < 0) {   // assume last year
+                          tmC->tm_year--;
+                          refB = mktime(tmC);
+                          diff = (refA - refB) / (3600 * 24);
+                      }//if
+                  }//if
+                  if ((check == '<' && diff <= 0) || (check == '>' && diff >= 0)) {
+                      sprintf(dp, "%d", labs(diff));
                       dp += strlen(dp);
                   }//if
                   else {
@@ -1713,8 +1748,8 @@ void loop() {
 			break;
 		case 3: // long pressed button 2
 			_countdown = 0;
-			_settings.options++;
-			if ((_settings.options&0x07) > DISP_SPIN) _settings.options &= ~0x07;
+			if ((_settings.options&0x07) == DISP_SPIN) _settings.options &= ~0x07;
+            else _settings.options++;
 			//saveConfig();
 			writeString(_transit_label[_settings.options&0x07], DISP_CLEAR);
 			_input = 0;
