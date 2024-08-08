@@ -61,7 +61,7 @@ A countdown timer can also be activated via double tapping the button. Setup is 
 ### Technical Details
 
 - Employs Arduino ESP32 AutoConnect library for entering WIFI credentials.
-- Full use of ESP32 S2 Mini IO pins to perform LED multiplexing.
+- Full use of ESP32 S2 Mini IO pins to perform LED multiplexing and charlieplexing.
 - Access of IO registers directly and timer interrupts for efficient multiplexing.
 
 ### Initial Setup
@@ -98,44 +98,37 @@ The S14Clock make use of the button on the ESP32 module for local functionalitie
 
 Upon power up the S14Clock will show it's IP address briefly. The S14Clock runs a web server for configuration and customization. Enter the IP address via a browser to access the appliation server.
 
-
-
-The four **primary buttons** at the top of the page serves the following purposes;
-
+The **primary buttons** at the top of the page serves the following purposes;
 
 - **Count Down** turns the display into a countdown timer, additional press on this button advances the countdown time.
 - **Advance Display** cycle to the next display format, as setup via "Display Content" entries.
 - **Reset Configuration** resets S14Clock to preset default configuration values.
 - **Reset WIFI** forget current WIFI credentials, next power up will require WIFI setup again.
+- **Use** button to confirm use of system discovered Posix TZ (timezone) configuration.
 
  <img src="images/s14web_01a.png" alt="IMG" style="border:2px solid #555;margin-right:10px" width="240"/>
 
-
-
 **Ad-hoc messages** can be entered and send to the S14Clock display. If entered text is prefixed with ~x or ~X, message will expire in 10 or 60 seconds and clock will return to previous display content.
-
-
 
 Eight sets of **display contents** (left plus right aligned text and tokens) can be configured, along with checkboxes to turn them on and off. The "on" contents will be cycled through the cycle / advance display button.
 
 
  <img src="images/s14web_02.png" alt="IMG" style="border:2px solid #555;margin-right:10px" width="240"/>
 
-
-
 A separated **countdown content display** set is used specifically for countdown function.
+
+Optional **Alternate NTP Server** entry if you want a different or local NTP server setup.
+
+**Posix TZ** entry, if entered, allows Posix Time Zone string to describe GMT offset, daylight saving time details, this can be populated automatically from the **Use** button at the top of the page after user verify the zone discovery result is reasonable.
 
 Tokens are used to substitute current date time elements and also font used. Their usage can be found in the "Format Control" section below.
 
 The rest of the configuration parameters are self explainary. Countdown Increments, Transit Effects, Cycle Seconds (0 for no content cycling), Brightness, Rotate (when display is turn upside down), All Caps, Auresh (special font) and Time Zone.
 
-
-
 The **Format Control** section explains how tokens can be used to display various date time elements, plus other special features in S14Clock, builtin features are in the format of tilde + code (ex. ~W), strtime() tokens in the format of percent + code (ex. %H), strtime() is a C language function for date time formatting.
 
-
-
-Change of **Time Zone**, after clicking on the 'Save' button, will also require a hardware reset on the clock unit to take effect.
+Change of **Time Zone**, after clicking on the 'Save' button, will also require a hardware reset on the clock unit to take effect. This is a failsafe setup, as
+the **Posix TZ** setting should already cover the GMT offset and provide daylight saving time information.
 
 
 ### Startup Options
@@ -152,36 +145,14 @@ During the show of "000000000000...", press and hold button 0 will **reset the W
 
 
 
-During the show of versions, "FWx.xx HWxxx", press button 0 will force the clock unit to enter a **burn-in** mode, and the clock unit will operate it display mechanism without WIFI and NTP connection.
+During the show of versions, "FWx.xx HWxxx", press button 0 will force the clock unit to enter a **burn-in** mode, and the clock unit will operate the display mechanism without WIFI and NTP connection.
 
 
 ### Firmware Update
 
-
-
 Potential bug fixes and feature enhancements will be provided in [my github repository](https://github.com/simpleavr/s14clock). 
 
-You can try to use this (web based installer;https://simpleavr.github.io/s14clock/install.html), and often times it fails. And then you should try this more reliable [Adafruit's ESPTool](https://adafruit.github.io/Adafruit_WebSerial_ESPTool) to upload new firmwares to the clock unit, you will at recent versions of Chrome or Edge browser to use either of the tools;
-
-For using the Adafruit ESPTool, you have to download appropriate firmware bin file from my github repository, binaries are [in the bin directory](https://github.com/simpleavr/s14clock/tree/main/bin).
-
-- Conncet the S14Clock unit to laptop / PC via usb
-- Launch browser and navigate to the above mentioned ESPTool web page
-- Reset clock unit by pressing 'Reset' while holding the '0' button
-- Click 'Connect' button on ESPTool web page, identify (ESP32-S2) and select com port
-- Enter 10000 (makes the entry 0x10000), '4 zeros', in first entry box
-- Use 'Choose a file..' button to select firmware bin file
-- Click 'Program' button to start firmware loading
-
-
-
-In extreme case (AutoConnect failed, power off during flash writing, etc), you can try to erase everything in the S2 mini memory and upload bootloader, partition and firmware all over again. The procedure is similar to the above, except to click 'Erase' before we select files to upload. And we will need to specify 3 binaries to upload;
-
-- offset 0x1000, bootloader.bin
-- offset 0x8000, partitions.bin
-- offset 0x10000, firmware??_?_?.bin
-
-
+You need a modern / recent browser that supports Web-Serial-API to use the [Firmware Installer](./install.html).
 
 ### Components and Assembly
 
@@ -189,10 +160,9 @@ In extreme case (AutoConnect failed, power off during flash writing, etc), you c
 
 
 
-- 1× ESP32 S2 Mini module
-- 1x 74HC154D 4-16 line decoder (not needed for S14-12)
+- 1× ESP32 S2 Mini module, w/ male headers
+- ~~1x 74HC154D 4-16 line decoder (not needed for S14-12)~~
 - 4x 3692AS common cathode 14 segments 6 digits LED module (2x for S14-12)
-- 2x 8x2 male header
 - 2x 8x2 female header
 - 4x M3 16mm steel screws
 - 4x M3 steel nuts

@@ -1,5 +1,13 @@
 # S14Clock
 
+[Install v2.04 beta firmware, pick firmware beta](https://simpleavr.github.io/s14clock/install.html)
+
+**2024-05-02** change 'alternate transition' token from '\~=' to '\~!'. '\~=' be used in new "exact date" macro, '\~=0501?HAPPY MAYDAY'. Implement alternate transition for "flip" to flip also spaces.  Implement alternate transition for "flash" to use alternate sequence.
+
+**2023-12-10** Implements "alternate transition"" macro, `'\~='`. I.e. double-blink for **Blink** transition, left-to-right for **Shift** and **Drip** transitions, and alternate sequence for other transitions.
+
+**2023-12-07** Implements "day counting" macro, `'\~<MMDD? DAYS TO ..'` and `'\~>MMDD? DAYS SINCE ..'`, apart from MMDD, YYMMDD and YYYYMMDD also accepted. Capable of counting up to 40+ years due to datatype constraint. When using MMDD, system assumes past, current, or next year as reference automatically.
+
 [Install latest firmware, pick v2.03](https://simpleavr.github.io/s14clock/install.html)
 
 **2023-11-27** NTP server and POSIX TZ configuration changed from using 8th content slot to a new storage space. The new fields are 40 characters wide and
@@ -7,7 +15,7 @@ should be able to hold the extra long TZ strings.
 
 **2023-11-08** V2.03 Add optional POSIX TZ configuration support. This will allow daylight saving time configurations (eg. EST5EDT,M3.2.0,M11.1.0).  Enter POSIX TZ string as the 8th "Additional Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@EST5EDT" as the 8th display addn text. Configuration web page will now also detect geo-location and suggest a proper TZ value to use. Feature available in bin/firmware_203.bin
 
-**2023-07-25** Implement new content tokens '\~+dd' and '\~-dd' to adjust current time by adding / subtracting hours, useful for multi-city display.
+**2023-07-25** Implement new content tokens `'\~+dd'` and `'\~-dd'` to adjust current time by adding / subtracting hours, useful for multi-city display.
 
 **2023-06-25** Implement configurable NTP server, to configure, enter overriding NTP server url as the 8th "Display Content" text, prefixed with '@' character, and make sure the "Use" checkbox is off. Example enter "@time2.google.com" as the 8th display content text.
 

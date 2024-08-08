@@ -39,8 +39,13 @@
 // c231207 add date countdown
 //         0.........0.........0.........0.........
 //         ~<1225? DAYS PAST: DAYS TIL> CHRISTMAS
-// c231210 add ~= token to reversed direction Shift and Drip transactions, i.e. from right to left
+// c231210 add ~= token to reversed direction Shift and Drip transitions, i.e. from right to left
 //         fix bug in ~-?? time offset
+// c231227 allow local time in "days counting" content slot
+// c240502 change 'alternate transition' token from ~= to ~!
+//         ~= be used in new ~=0501? HAPPY MAYDAY
+//         implement alternate transition for "flip" to flip also spaces
+//         implement alternate transition for "flash" to use alternate sequence
 #define USE_WIFI			// comment out to test display only
 
 
@@ -345,7 +350,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			{
 				clearAll();
 				uint8_t c=1;
-                if (opt & DISP_TRANSOPT) c++;
+                if (opt & DISP_TRANSOPT) c++;   // double blink
                 while (c--) {
                     delay(30);
                     writeString(s, opt|DISP_REENTRANT);
@@ -364,7 +369,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			{
 				//clearAll();
 				int8_t dir=1;
-                if (opt & DISP_TRANSOPT) dir = -1;
+                if (opt & DISP_TRANSOPT) dir = -1;    // right to left
 				uint8_t j=(_num_of_digits-1);
 				_last_string[j] = '\0';
 				const char *lp = _last_string;
@@ -391,7 +396,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				}//while
             }
 			break;
-		case DISP_DRIP:
+		case DISP_DRIP:   // right to left
 			/*
 			{	// this was 'glow'
 				_brightness = 7;
@@ -425,22 +430,21 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 			break;
 		case DISP_FLIP:
 			{
-				for (char c='0';c<'Z';c++) {
-					for (uint8_t i=0;i<_num_of_digits;i++) {
-						if (_last_string[i] > ' ') 
-							writeAscii(i, _last_string[i] > c ? _last_string[i] : c, opt);
-					}//for
-					delay(20);
-				}//for
-				clearAll();
-				for (char c='0';c<'Z';c++) {
-					const char *p = s;
-					for (uint8_t i=0;i<strlen(s);i++) {
-						if (*p > ' ') writeAscii(i, *p > c ? c : *p, opt);
-						p++;
-					}//for
-					delay(20);
-				}//for
+                //
+                uint8_t done = 0;
+                const char *a = _last_string;
+                while (1) {
+                    for (char c='0';c<'Z';c++) {
+                        for (uint8_t i=0;i<strlen(a);i++)
+                            if (a[i] > ' ' || opt & DISP_TRANSOPT)
+                                writeAscii(i, a[i] > c ? (done?c:a[i]) : (done?a[i]:c), opt);
+                        delay(20);
+                    }//for
+                    if (done) break;
+                    clearAll();
+					a = s;
+                    done++;
+                }//while
 			}
 			break;
 		case DISP_SPIN:
@@ -462,13 +466,16 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 				//uint8_t sav_brightness = _brightness;
 				//_brightness = 0;
 				uint8_t limit = strlen(s);
-				static uint8_t mix_map[] = {
+				const uint8_t mix_map[] = {
 					3, 1, 4, 0, 7, 8, 9, 11, 6, 2, 5, 10,
 					19, 12, 20, 23, 21, 13, 22, 17, 14, 16, 15, 18,
+                    7, 8, 9, 11, 6, 2, 5, 10, 3, 1, 4, 0, 
+                    21, 13, 22, 17, 19, 12, 20, 23, 14, 16, 15, 18,
 				};
 					//3, 19, 12, 1, 20, 4, 23, 0, 21, 13, 7, 22, 8, 17, 14, 9, 11, 6, 16, 2, 15, 5, 10, 18,
+                uint8_t offset =  opt & DISP_TRANSOPT ? 0 : 24;
 				for (uint8_t i=0;i<_num_of_digits;i++) {
-					uint8_t j = mix_map[(i+s[0])%_num_of_digits];
+					uint8_t j = mix_map[(i+s[0])%_num_of_digits + offset];
 					if (_chr_buf[j] != ' ') {
 						if (j < limit && s[j] > ' ') {
 							writeAscii(j, s[j], opt);
@@ -487,7 +494,7 @@ uint8_t writeString(const char *s, uint16_t opt=0) {
 					}//if
 				}//for
 				for (uint8_t i=0;i<_num_of_digits;i++) {
-					uint8_t j = mix_map[(i+s[0])%_num_of_digits];
+					uint8_t j = mix_map[(i+s[0])%_num_of_digits + offset];
 					if (j < limit && s[j] > ' ' && _chr_buf[j] == ' ') {
 						writeAscii(j, s[j], opt);
 						_dbl_on = 1<<j;
@@ -695,8 +702,8 @@ void resetConfig() {
 	strcpy(_settings.addn[3], "");
     strcpy(_settings.text[4], "NEW YORK");
 	strcpy(_settings.addn[4], "%T");
-	strcpy(_settings.text[5], "~<1225? DAYS TIL CHRISTMAS");
-	strcpy(_settings.addn[5], "");
+	strcpy(_settings.text[5], "~<1225? DAYS TO XMAS");
+	strcpy(_settings.addn[5], "%R");
 	strcpy(_settings.text[6], "~>191231? DAYS SINCE COVID");
 	strcpy(_settings.addn[6], "");
 	strcpy(_settings.text[7], "PLS WAIT TO BE SEATED");
@@ -808,7 +815,7 @@ void handleRoot() {
 <a href=\"/reset\"><button>Reset Configuration</button></a><br>\
 <a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
 &nbsp;&nbsp;via AP menu Reset entry\
-<br><label class='msg'>If city is resolved, TZ most accurate, sugguest to use</label><br>\
+<br><label class='msg'>If city is resolved, TZ most accurate, suggest to use</label><br>\
 <label id='olson_tz'>Unknown/City</label>, <label id='posix_tz'>GMT0</label>\
 &nbsp;<button onClick='loadTz()'>Use</button>\
 <script>function loadTz() {\
@@ -947,9 +954,10 @@ All Caps: <input type='checkbox' name='optToUpper' %s>\
 <tr><td>~d</td><td>Countdown HH:MM</td></tr>\
 <tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
 <tr><td>~u</td><td>Countup HH:MM</td></tr>\
+<tr><td>~!</td><td>Use alternate transition sequence</td></tr>\
 <tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days after date, skip otherwise</td></tr>\
 <tr><td>~&lt;[[yy]yy]mmdd?</td><td>Days before date, skip otherwise</td></tr>\
-<tr><td>~=</td><td>Reverse direction on transitions</td></tr>\
+<tr><td>~=[[yy]yy]mmdd?</td><td>Show on exact date, skip otherwise</td></tr>\
   </table>\
   <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
   <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>\
@@ -1376,7 +1384,7 @@ void showMessage(const char *sp) {
 void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
     char *dpSav = dp;
 	while (*sp) {		// process internal # tokens 1st
-		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-<>=", *(sp+1)))) {
+		if (*sp == '~' && (strchr("~1234WwRrUuDdXx+-!<>=", *(sp+1)))) {
 			sp++;
 			if (*sp == '~') *dp++ = *sp;
 			// c2303 add support for vertical numerics
@@ -1397,31 +1405,31 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                 _epoch = time(NULL) + (hour_off * 3600 * add);
                 _tm = localtime(&_epoch);
 			}//if
-            // ~= left-to-right on shift and drip transitions
-			if (*sp == '=') {   // cc231212 transition direction
+            // ~! left-to-right on shift and drip transitions
+			if (*sp == '!') {   // cc231212 transition direction
               *pOpt |= DISP_TRANSOPT;
             }//if
             // ~<1225? days offset if less than date
             // ~>1225? days offset if greater than date
-			if (*sp == '<' || *sp == '>') {   // cc231207 date counting
+			if (*sp == '<' || *sp == '>' || *sp == '=') {   // cc231207 date counting, cc240502 add exact date or skip
                 int yearOn = 0;
                 char check = *sp;
                 sp++;
                 int year_set = -1, century = 1;
-                if (*(sp+8) == '?') {
+                if (*(sp+8) == '?') {       // YYYYMMDD?
                   century = (*sp-'0') * 10 + (*(++sp)-'0');
                   if (century >= 19) century -= 19;
                   else century = 1;   // invalid if before 1900, assume 20xx
                   sp++;
                 }//if
-                if (*(sp+6) == '?') {
+                if (*(sp+6) == '?') {       // YYMMDD?
                   year_set = (*sp-'0') * 10 + (*(++sp)-'0');
                   year_set += century * 100;
                   yearOn++;
                   sp++;
                 }//if
-                if (*(sp+4) == '?') {
-                  time_t refA=0, refB=0;
+                if (*(sp+4) == '?') {       // MMDD?
+                  time_t refA=0, refB=0;    // refA=current date, refB=target date
                   struct tm *tmC = localtime(&_epoch);;
                   // set specific date
                   tmC->tm_hour = 0;
@@ -1452,10 +1460,15 @@ void macroSub(uint16_t *pOpt, char *dp, const char *sp) {
                       dp += strlen(dp);
                   }//if
                   else {
-                    dp = dpSav;
-                    *dp++ = '~'; *dp++ = '~';   // signal to skip show
-                    break;
+                    if (check != '=' || diff) {  // ~=MMDD not matching current date, skip
+                        dp = dpSav;
+                        *dp++ = '~'; *dp++ = '~';   // signal to skip show
+                        break;
+                    }//if
                   }//else
+                  // cc231227 allow day count content to also show local time
+                  _epoch = time(NULL);
+                  _tm = localtime(&_epoch);
                 }//if
             }//if
 		}//if
@@ -1647,24 +1660,35 @@ void setup() {
 	//_input = 0x04;
 	if (burn_in) {
 		resetConfig();
-		/*
-		strcpy(_settings.text[1], "~-3%X");
-		strcpy(_settings.text[2], "~+10");
-		strcpy(_settings.text[3], "~4%X");
-		struct timeval n;
-		//n.tv_sec = 3600*28 -8 -60*2;
-		//n.tv_sec = 3600*16 -8 -60*2;
-		n.tv_sec = 60*44;
-		n.tv_usec = 0;
-		settimeofday(&n, NULL);
+        /*--- uncomment for testing only ------------------------------------------------- 
+        struct timeval n;
+        n.tv_sec = 1714521600;    // baseline date 2024-05-01 midnight
+        n.tv_sec += 4 * 3600;    // adjust timezone
+        n.tv_sec -= 20;
+        n.tv_usec = 0;
+        settimeofday(&n, NULL);
+        _settings.use[0] = 'o'; _settings.use[1] = 'o';
+        _settings.use[2] = ' '; _settings.use[3] = ' ';
+        _settings.use[4] = ' '; _settings.use[5] = ' ';
+        _settings.use[5] = ' '; _settings.use[6] = ' ';
+        strcpy(_settings.text[0], "~!%b %d %a");
+        strcpy(_settings.addn[0], "%X");
+        strcpy(_settings.text[1], "~!~W");
+        strcpy(_settings.text[5], "~<1225? DAYS TO XMAS");
+        strcpy(_settings.text[6], "~!~=0501?HAPPY MAYDAY");
 		_brightness = 3;
-		_settings.cycle = 4;
+		_settings.cycle = 6;
 		_settings.options = OPT_TOUPPER;
-		_settings.options |= DISP_SHUTTER;
+		//strcpy(_settings.text[1], "~-3%X");
+		//strcpy(_settings.text[2], "~+10");
+		//strcpy(_settings.text[3], "~4%X");
+		//_settings.options |= DISP_SHIFT;
+		//_settings.options |= DISP_SHUTTER;
 		//_settings.options |= DISP_FLIP;
-		//_settings.options |= DISP_FLASH;
+		//_settings.options |= DISP_SPIN;
+		_settings.options |= DISP_FLASH;
 		//_settings.options |= OPT_MTRANS;
-		*/
+        /*----------------------------------------------------------------------------*/
 	}//if
 }
 static int _count = 0;
@@ -1743,7 +1767,7 @@ void loop() {
 				cycle = _settings.cycle;
 				//_next_transition = _settings.options&0x07;
 			}//else
-			opt |= DISP_FORCE;
+            opt |= DISP_FORCE;
 			}
 			break;
 		case 3: // long pressed button 2
