@@ -46,6 +46,7 @@
 //         ~= be used in new ~=0501? HAPPY MAYDAY
 //         implement alternate transition for "flip" to flip also spaces
 //         implement alternate transition for "flash" to use alternate sequence
+// c250105 fix hardware version detection, V2-24 hardware detection was broken
 #define USE_WIFI			// comment out to test display only
 
 
@@ -603,7 +604,9 @@ void setupDisplay() {
 		_version[10] = ' ';
 		_version[11] = ' ';
 	}//if
-	pinMode(11, INPUT_PULLUP);
+	pinMode(17, INPUT_PULLDOWN);
+	pinMode(10, INPUT_PULLDOWN);
+	//pinMode(11, INPUT_PULLUP);
 	pinMode(34, INPUT_PULLUP);
 	delay(50);
 	if ((digitalRead(11) == LOW && digitalRead(34) == HIGH)) {	// version 2, 24 characters

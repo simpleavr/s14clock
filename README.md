@@ -2,7 +2,9 @@
 
 [Install v2.04 beta firmware, pick firmware beta](https://simpleavr.github.io/s14clock/install.html)
 
-**2024-05-02** change 'alternate transition' token from '\~=' to '\~!'. '\~=' be used in new "exact date" macro, '\~=0501?HAPPY MAYDAY'. Implement alternate transition for "flip" to flip also spaces.  Implement alternate transition for "flash" to use alternate sequence.
+**2025-01-05** Fix hardware version detection, V2-24 hardware detection was broken.
+
+**2024-05-02** Change 'alternate transition' token from '\~=' to '\~!'. '\~=' be used in new "exact date" macro, '\~=0501?HAPPY MAYDAY'. Implement alternate transition for "flip" to flip also spaces.  Implement alternate transition for "flash" to use alternate sequence.
 
 **2023-12-10** Implements "alternate transition"" macro, `'\~='`. I.e. double-blink for **Blink** transition, left-to-right for **Shift** and **Drip** transitions, and alternate sequence for other transitions.
 
