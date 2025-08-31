@@ -52,14 +52,18 @@
 
 #include <WiFi.h>
 #include <WebServer.h>
+#include <Preferences.h>
 #include <uri/UriRegex.h>
 #include <time.h>
-#include <AutoConnect.h>
+#include <Update.h>  // For OTA firmware updates
+// #include <AutoConnect.h>  // Replaced with WiFiManager
+#include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager
 
 #ifdef USE_WIFI
 WebServer 			server;
-AutoConnect      	portal(server);
-AutoConnectConfig   Config;
+// AutoConnect      	portal(server);  // Replaced with WiFiManager
+// AutoConnectConfig   Config;
+WiFiManager wifiManager;
 #endif
 
 #define NTPServer1  "pool.ntp.org"
@@ -665,25 +669,7 @@ void setupDisplay() {
 //________________________________________________________________________________
 
 void resetCredentials(void) {
-  AutoConnectCredential credential;
-  station_config_t config;
-  uint8_t ent = credential.entries();
-
-  Serial.println("AutoConnectCredential deleting");
-  if (ent)
-    Serial.printf("Available %d entries.\n", ent);
-  else {
-    Serial.println("No credentials saved.");
-    return;
-  }
-
-  while (ent--) {
-    credential.load((int8_t)0, &config);
-    if (credential.del((const char*)&config.ssid[0]))
-      Serial.printf("%s deleted.\n", (const char*)config.ssid);
-    else
-      Serial.printf("%s failed to delete.\n", (const char*)config.ssid);
-  }
+  wifiManager.resetSettings();
 }
 
 void resetConfig() {
@@ -796,196 +782,195 @@ void notFound() {
 char htmlResponse[8400];
 
 void handleRoot() {
-  snprintf(htmlResponse, 8400, "\
-<!DOCTYPE html>\
-  <style>\
-  body { font-family:Arial; font-size:0.9em; }\
-  .msg { color:red; font-size:0.9em; }\
-  fieldset button { margin:1px; }\
-  fieldset p { clear:both; padding:0px; }\
-  fieldset { line-height:1.3em; background-color:gainsboro; }\
-  </style>\
-<html lang='en'>\
-  <head>\
-    <meta charset='utf-8'>\
-    <meta name='viewport' content='width=device-width, initial-scale=1'>\
-  </head>\
-  <body>\
-  <fieldset>\
-<legend style='color:dimgrey'><b>Seg14 Clock</b></legend>\
-<a href=\"/button1\"><button>Count Down</button></a>\
-<a href=\"/button2\"><button>Advance Display</button></a>\
-<a href=\"/reset\"><button>Reset Configuration</button></a><br>\
-<a href=\"/_ac\"><button>Reset WIFI Credentials</button></a>\
-&nbsp;&nbsp;via AP menu Reset entry\
-<br><label class='msg'>If city is resolved, TZ most accurate, suggest to use</label><br>\
-<label id='olson_tz'>Unknown/City</label>, <label id='posix_tz'>GMT0</label>\
-&nbsp;<button onClick='loadTz()'>Use</button>\
-<script>function loadTz() {\
-    document.getElementById('IDposixTZ').value = document.getElementById('posix_tz').textContent;\
-}</script>\
-  </fieldset><br>\
-  <form action='/action_page'>\
-<fieldset>\
-<legend style='color:dimgrey'><b>Display Contents</b></legend>\
-use ~? (custom), %%? (strtime) tokens<br>\
-<table cellspacing='1px' cellpadding='1px'>\
-<tr>\
-<td>Content</td>\
-<td>End With</td>\
-<td>Use</td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textA' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useA' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textB' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useB' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textC' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useC' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textD' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useD' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textE' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useE' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textF' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useF' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textG' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useG' %s></td>\
-</tr>\
-<tr>\
-<td><input type='text' name='textH' value='%-.60s' size='24' maxlength='60' autofocus>  </td>\
-<td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='24'>  </td>\
-<td><input type='checkbox' name='useH' %s></td>\
-</tr>\
-<tr>\
-<td>Content (Count Down / Up)</td>\
-<td>#Dd #Uu</td>\
-<tr>\
-<td><input type='text' name='textX' value='%s' size='24' maxlength='24' autofocus>  </td>\
-<td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>\
-</tr>\
-<tr>\
-<td><input type='text' name='altNTP' value='%s' size='24' maxlength='60' autofocus>  </td>\
-<td>NTP Override</td>\
-</tr>\
-<tr>\
-<td><input type='text' name='posixTZ' id='IDposixTZ' value='%s' size='24' maxlength='60' autofocus>  </td>\
-<td>Posix TimeZone</td>\
-</tr>\
-</table>\
-<p>Countdown Increment:<br>\
-<input type='radio' name='useX' value=1 %s> 1 min\
-<input type='radio' name='useX' value=5 %s> 5 min\
-<input type='radio' name='useX' value=10 %s> 10 min\
-<input type='radio' name='useX' value=15 %s> 15 min\
-<input type='radio' name='useX' value=30 %s> 30 min\
-</p>\
-<p>Transition Effect:<br>\
-<input type='radio' name='transition' value=0 %s> None\
-<input type='radio' name='transition' value=1 %s> Blink\
-<input type='radio' name='transition' value=2 %s> Shift\
-<input type='radio' name='transition' value=3 %s> Drip\
-<input type='radio' name='transition' value=4 %s> Flip\
-<input type='radio' name='transition' value=5 %s> Flash\
-<input type='radio' name='transition' value=6 %s> Spin\
-</p>\
-<p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>\
-<p>Bright: \
-<input type='radio' name='brightness' value=0 %s> 0\
-<input type='radio' name='brightness' value=1 %s> 1\
-<input type='radio' name='brightness' value=2 %s> 2\
-<input type='radio' name='brightness' value=3 %s> 3\
- Rotate: <input type='checkbox' name='optRotate' %s></p>\
-All Caps: <input type='checkbox' name='optToUpper' %s>\
-  Reserved: <input type='checkbox' name='optXfont' %s>\
-  All Transitions: <input type='checkbox' name='optMtrans' %s>\
-  </p>\
-<p>GMT &#xb1;hrs (-11..14): <input type='number' name='timezone' size=2 min=-11 max=14 value=%d>\
- <label id='suggest_tz'></label> (overridable)</p>\
-<input type='submit' value='Save Configuration'>\
-&nbsp;&nbsp;%s\
-</fieldset>\
-<br>\
-  </form>\
-  <form action='/fix'>\
-	  <fieldset>\
-	  <legend style='color:dimgrey'><b>One-time Message</b></legend>\
-		  <input type='text' name='message' value='~x' size='24' maxlength='24' autofocus>\
-		  <input type='submit' value='Send'>\
-	  </fieldset>\
-  </fieldset>\
-  </form><br>\
-  <fieldset>\
-  <legend style='color:dimgrey'><b>Format Control</b></legend>\
-  Formatting tokens can be used in content / message<br><br>\
-  <table border='1px' border-collapse='collapse' >\
-<tr>\
-<th>Token</th>\
-<th>Effect on Content / Message</th>\
-</tr>\
-<tr><td>~1</td><td>Kanji Numerics</td></tr>\
-<tr><td>~2</td><td>Flower Code Numerics</td></tr>\
-<tr><td>~3</td><td>Vertical Numerics</td></tr>\
-<tr><td>~4</td><td>Aurebesh Character Set</td></tr>\
-<tr><td>~+dd</td><td>Add dd hours</td></tr>\
-<tr><td>~-dd</td><td>Subtract dd hours</td></tr>\
-<tr><td>~W</td><td>Worded Time Format 1</td></tr>\
-<tr><td>~w</td><td>Worded Time Format 2</td></tr>\
-<tr><td>~R</td><td>Roman Numeric Hour-Min</td></tr>\
-<tr><td>~r</td><td>Roman Numeric Hour-Min-Sec</td></tr>\
-<tr><td>~X</td><td>Message expires in 60 seconds</td></tr>\
-<tr><td>~x</td><td>Message expires in 10 seconds</td></tr>\
-<tr><td>~D</td><td>Countdown HH:MM:SS</td></tr>\
-<tr><td>~d</td><td>Countdown HH:MM</td></tr>\
-<tr><td>~U</td><td>Countup HH:MM:SS</td></tr>\
-<tr><td>~u</td><td>Countup HH:MM</td></tr>\
-<tr><td>~!</td><td>Use alternate transition sequence</td></tr>\
-<tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days after date, skip otherwise</td></tr>\
-<tr><td>~&lt;[[yy]yy]mmdd?</td><td>Days before date, skip otherwise</td></tr>\
-<tr><td>~=[[yy]yy]mmdd?</td><td>Show on exact date, skip otherwise</td></tr>\
-  </table>\
-  <br>Search web for <a href=\"https://www.google.com/search?q=strftime\">strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>\
-  <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>\
-  Useful links<br>\
-  <a href=\"https://simpleavr.github.io/s14clock\">Main project page</a><br>\
-  <a href=\"https://github.com/simpleavr/s14clock\">Project github page</a> README.md details changes<br>\
-  <a href=\"https://github.com/simpleavr/s14clock/discussions\">Project discussions</a> troubleshooting and more<br>\
-  <a href=\"https://github.com/simpleavr/s14clock/wiki\">Project wiki page</a> kit building help<br>\
-  <a href=\"https://www.tindie.com/orders/428141/\">Tindie product page</a> if you need more<br>\
-  <br>\
-  </fieldset><br>\
-  <script src='https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js'></script>\
-  <script>\
-    document.getElementById('suggest_tz').innerHTML = '&nbsp;suggest  -' + (new Date().getTimezoneOffset() / 60);\
-  Papa.parse('https://raw.githubusercontent.com/nayarsystems/posix_tz_db/master/zones.csv', {\
-  download: true,\
-  complete: function(results) {\
-    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;\
-    document.getElementById('olson_tz').innerHTML = tz;\
-    document.getElementById('posix_tz').innerHTML = results.data.filter(el => el[0] == tz)[0][1];\
-  } });\
-  </script>\
-  </body>\
-</html>\
-",
+  snprintf(htmlResponse, 8400,
+    "<!DOCTYPE html>"
+    "<style>"
+    "body { font-family:Arial; font-size:0.9em; }"
+    ".msg { color:red; font-size:0.9em; }"
+    "fieldset button { margin:1px; }"
+    "fieldset p { clear:both; padding:0px; }"
+    "fieldset { line-height:1.3em; background-color:gainsboro; }"
+    "</style>"
+    "<html lang='en'>"
+    "<head>"
+    "<meta charset='utf-8'>"
+    "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+    "</head>"
+    "<body>"
+    "<fieldset>"
+    "<legend style='color:dimgrey'><b>Seg14 Clock</b></legend>"
+    "<a href='/button1'><button>Count Down</button></a>"
+    "<a href='/button2'><button>Advance Display</button></a>"
+    "<a href='/reset'><button>Reset Configuration</button></a><br>"
+    "<a href='/wifireset'><button>Reset WIFI Credentials</button></a>"
+    "<a href='/update'><button>Firmware Update</button></a>"
+    "<br><label class='msg'>If city is resolved, TZ most accurate, suggest to use</label><br>"
+    "<label id='olson_tz'>Unknown/City</label>, <label id='posix_tz'>GMT0</label>"
+    "&nbsp;<button onClick='loadTz()'>Use</button>"
+    "<script>function loadTz() {"
+    "document.getElementById('IDposixTZ').value = document.getElementById('posix_tz').textContent;"
+    "}</script>"
+    "</fieldset><br>"
+    "<form action='/action_page'>"
+    "<fieldset>"
+    "<legend style='color:dimgrey'><b>Display Contents</b></legend>"
+    "use ~? (custom), %%? (strtime) tokens<br>"
+    "<table cellspacing='1px' cellpadding='1px'>"
+    "<tr>"
+    "<td>Content</td>"
+    "<td>End With</td>"
+    "<td>Use</td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textA' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnA' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useA' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textB' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnB' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useB' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textC' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnC' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useC' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textD' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnD' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useD' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textE' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnE' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useE' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textF' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnF' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useF' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textG' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnG' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useG' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='textH' value='%-.60s' size='24' maxlength='60' autofocus>  </td>"
+    "<td><input type='text' name='addnH' value='%-.24s' size='8' maxlength='24'>  </td>"
+    "<td><input type='checkbox' name='useH' %s></td>"
+    "</tr>"
+    "<tr>"
+    "<td>Content (Count Down / Up)</td>"
+    "<td>#Dd #Uu</td>"
+    "<tr>"
+    "<td><input type='text' name='textX' value='%s' size='24' maxlength='24' autofocus>  </td>"
+    "<td><input type='text' name='addnX' value='%s' size='8' maxlength='12'>  </td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='altNTP' value='%s' size='24' maxlength='60' autofocus>  </td>"
+    "<td>NTP Override</td>"
+    "</tr>"
+    "<tr>"
+    "<td><input type='text' name='posixTZ' id='IDposixTZ' value='%s' size='24' maxlength='60' autofocus>  </td>"
+    "<td>Posix TimeZone</td>"
+    "</tr>"
+    "</table>"
+    "<p>Countdown Increment:<br>"
+    "<input type='radio' name='useX' value=1 %s> 1 min"
+    "<input type='radio' name='useX' value=5 %s> 5 min"
+    "<input type='radio' name='useX' value=10 %s> 10 min"
+    "<input type='radio' name='useX' value=15 %s> 15 min"
+    "<input type='radio' name='useX' value=30 %s> 30 min"
+    "</p>"
+    "<p>Transition Effect:<br>"
+    "<input type='radio' name='transition' value=0 %s> None"
+    "<input type='radio' name='transition' value=1 %s> Blink"
+    "<input type='radio' name='transition' value=2 %s> Shift"
+    "<input type='radio' name='transition' value=3 %s> Drip"
+    "<input type='radio' name='transition' value=4 %s> Flip"
+    "<input type='radio' name='transition' value=5 %s> Flash"
+    "<input type='radio' name='transition' value=6 %s> Spin"
+    "</p>"
+    "<p>Cycles Contents Every <input type='number ' name='cycle' size=3 min=0 max=255 value=%d>  Seconds</p>"
+    "<p>Bright: "
+    "<input type='radio' name='brightness' value=0 %s> 0"
+    "<input type='radio' name='brightness' value=1 %s> 1"
+    "<input type='radio' name='brightness' value=2 %s> 2"
+    "<input type='radio' name='brightness' value=3 %s> 3"
+    " Rotate: <input type='checkbox' name='optRotate' %s></p>"
+    "All Caps: <input type='checkbox' name='optToUpper' %s>"
+    "  Reserved: <input type='checkbox' name='optXfont' %s>"
+    "  All Transitions: <input type='checkbox' name='optMtrans' %s>"
+    "  </p>"
+    "<p>GMT &#xb1;hrs (-11..14): <input type='number' name='timezone' size=2 min=-11 max=14 value=%d>"
+    " <label id='suggest_tz'></label> (overridable)</p>"
+    "<input type='submit' value='Save Configuration'>"
+    "&nbsp;&nbsp;%s"
+    "</fieldset>"
+    "<br>"
+    "  </form>"
+    "  <form action='/fix'>"
+    "    <fieldset>"
+    "    <legend style='color:dimgrey'><b>One-time Message</b></legend>"
+    "      <input type='text' name='message' value='~x' size='24' maxlength='24' autofocus>"
+    "      <input type='submit' value='Send'>"
+    "    </fieldset>"
+    "  </fieldset>"
+    "  </form><br>"
+    "  <fieldset>"
+    "  <legend style='color:dimgrey'><b>Format Control</b></legend>"
+    "  Formatting tokens can be used in content / message<br><br>"
+    "  <table border='1px' border-collapse='collapse' >"
+    "<tr>"
+    "<th>Token</th>"
+    "<th>Effect on Content / Message</th>"
+    "</tr>"
+    "<tr><td>~1</td><td>Kanji Numerics</td></tr>"
+    "<tr><td>~2</td><td>Flower Code Numerics</td></tr>"
+    "<tr><td>~3</td><td>Vertical Numerics</td></tr>"
+    "<tr><td>~4</td><td>Aurebesh Character Set</td></tr>"
+    "<tr><td>~+dd</td><td>Add dd hours</td></tr>"
+    "<tr><td>~-dd</td><td>Subtract dd hours</td></tr>"
+    "<tr><td>~W</td><td>Worded Time Format 1</td></tr>"
+    "<tr><td>~w</td><td>Worded Time Format 2</td></tr>"
+    "<tr><td>~R</td><td>Roman Numeric Hour-Min</td></tr>"
+    "<tr><td>~r</td><td>Roman Numeric Hour-Min-Sec</td></tr>"
+    "<tr><td>~X</td><td>Message expires in 60 seconds</td></tr>"
+    "<tr><td>~x</td><td>Message expires in 10 seconds</td></tr>"
+    "<tr><td>~D</td><td>Countdown HH:MM:SS</td></tr>"
+    "<tr><td>~d</td><td>Countdown HH:MM</td></tr>"
+    "<tr><td>~U</td><td>Countup HH:MM:SS</td></tr>"
+    "<tr><td>~u</td><td>Countup HH:MM</td></tr>"
+    "<tr><td>~!</td><td>Use alternate transition sequence</td></tr>"
+    "<tr><td>~&gt;[[yy]yy]mmdd?</td><td>Days after date, skip otherwise</td></tr>"
+    "<tr><td>~&lt;[[yy]yy]mmdd?</td><td>Days before date, skip otherwise</td></tr>"
+    "<tr><td>~=[[yy]yy]mmdd?</td><td>Show on exact date, skip otherwise</td></tr>"
+    "  </table>"
+    "  <br>Search web for <a href='https://www.google.com/search?q=strftime'>strtime()</a> formatting tokens, common ones includes % + HMSmdw for hour, min, sec, month, day, weekday, etc.<br>"
+    "  <br><div class='msg'> NTP override and Posix TZ string override (allow automatic daylight saving time) are optional</div><br>"
+    "  Useful links<br>"
+    "  <a href='https://simpleavr.github.io/s14clock'>Main project page</a><br>"
+    "  <a href='https://github.com/simpleavr/s14clock'>Project github page</a> README.md details changes<br>"
+    "  <a href='https://github.com/simpleavr/s14clock/discussions'>Project discussions</a> troubleshooting and more<br>"
+    "  <a href='https://github.com/simpleavr/s14clock/wiki'>Project wiki page</a> kit building help<br>"
+    "  <a href='https://www.tindie.com/orders/428141/'>Tindie product page</a> if you need more<br>"
+    "  <br>"
+    "  </fieldset><br>"
+    "  <script src='https://cdnjs.cloudflare.com/ajax/libs/PapaParse/4.1.2/papaparse.min.js'></script>"
+    "  <script>"
+    "    document.getElementById('suggest_tz').innerHTML = '&nbsp;suggest  -' + (new Date().getTimezoneOffset() / 60);"
+    "  Papa.parse('https://raw.githubusercontent.com/nayarsystems/posix_tz_db/master/zones.csv', {"
+    "  download: true,"
+    "  complete: function(results) {"
+    "    var tz = Intl.DateTimeFormat().resolvedOptions().timeZone;"
+    "    document.getElementById('olson_tz').innerHTML = tz;"
+    "    document.getElementById('posix_tz').innerHTML = results.data.filter(el => el[0] == tz)[0][1];"
+    "  } });"
+    "  </script>"
+    "  </body>"
+    "</html>",
 /* TZ format, Olson=America/New_York, POSIX=EST5EDT,M3.2.0/02:00:00,M11.1.0,02:00:00 */
 _settings.text[0], _settings.addn[0], _settings.use[0]=='o' ? "checked" : "",
 _settings.text[1], _settings.addn[1], _settings.use[1]=='o' ? "checked" : "",
@@ -1027,7 +1012,7 @@ _version
 
 void handleButton1() {
 	_input = 0x01;
-	portal.end();
+	// portal.end();  // No longer needed with WiFiManager
 	writeString("DEMO", DISP_CLEAR);
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
@@ -1037,6 +1022,148 @@ void handleButton2() {
 	_input = 0x02;
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
+}
+void handleWiFiReset() {
+	resetCredentials();
+	server.send(200, "text/html", "<html><body><h2>WiFi credentials cleared!</h2><p>Device will restart. Connect to AP 'ESP-XXXX' with password '12345678' to reconfigure.</p></body></html>");
+	delay(2000);
+	ESP.restart();
+}
+void handleConfigMode() {
+	server.send(200, "text/html", "<html><body><h2>Entering Config Mode...</h2><p>Connect to AP 'ESP-XXXX' with password '12345678' to reconfigure.</p></body></html>");
+	delay(1000);
+	// Get chip ID for unique AP name
+	uint32_t chip_id = 0;
+	for (int i=0;i<17;i=i+8) chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+	String cid = String(chip_id, HEX);
+	cid.toUpperCase();
+	String apName = "ESP-" + cid;
+	WiFi.disconnect();
+	wifiManager.startConfigPortal(apName.c_str(), "12345678");
+}
+
+// OTA Firmware Update Handlers
+void handleUpdateForm() {
+	// Send the firmware upload form
+	server.send(200, "text/html", 
+		"<html><body>"
+		"<h2>Firmware Update</h2>"
+		"<p style='color:red'><b>⚠️ WARNING:</b><br>"
+		"DO NOT disconnect power during update!<br>"
+		"Device may become unrecoverable if interrupted.<br>"
+		"Update takes 30-60 seconds. Clock will freeze during update.</p>"
+		"<form method='POST' action='/update' enctype='multipart/form-data'>"
+		"<input type='file' name='update' accept='.bin' required><br><br>"
+		"<input type='submit' value='Update Firmware' onclick='return confirm(\"Are you sure? Do not disconnect power during update!\")'>"
+		"</form>"
+		"<br><a href='/'>Back to Main</a>"
+		"</body></html>"
+	);
+}
+
+void handleUpdateUpload() {
+	HTTPUpload& upload = server.upload();
+	static bool updateStarted = false;
+	static uint32_t updateSize = 0;
+	static uint8_t lastPercent = 0;
+	static uint32_t totalSize = 0;
+	
+	if (upload.status == UPLOAD_FILE_START) {
+		// Display update message on clock
+		writeString("UPDATING", DISP_CLEAR);
+		delay(500);
+		writeString("DO NOT UNPLUG", DISP_CLEAR);
+		delay(1000);
+		
+		updateStarted = false;
+		updateSize = 0;
+		lastPercent = 0;
+		totalSize = 1134000;  // Approximate firmware size (1.1MB)
+		
+		// Check if we have enough free space
+		if (!Update.begin(UPDATE_SIZE_UNKNOWN)) {
+			writeString("UPDATE FAIL", DISP_CLEAR);
+			Update.printError(Serial);
+		} else {
+			updateStarted = true;
+			writeString("UPDATING 0", DISP_CLEAR);
+		}
+		
+	} else if (upload.status == UPLOAD_FILE_WRITE) {
+		if (updateStarted) {
+			// Write the buffered bytes to flash
+			if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
+				Update.printError(Serial);
+				updateStarted = false;
+			} else {
+				updateSize += upload.currentSize;
+				
+				// Calculate percentage (update every 1%)
+				uint8_t percent = (updateSize * 100) / totalSize;
+				if (percent > 100) percent = 100;
+				
+				// Update display every 1%
+				if (percent > lastPercent) {
+					lastPercent = percent;
+					char progress[25];
+					snprintf(progress, sizeof(progress), "UPDATING %d", percent);
+					writeString(progress, DISP_CLEAR);
+				}
+			}
+		}
+		
+	} else if (upload.status == UPLOAD_FILE_END) {
+		if (updateStarted) {
+			// Show 100% completion
+			writeString("UPDATING 100", DISP_CLEAR);
+			delay(500);
+			
+			// Finalize the update
+			if (Update.end(true)) {
+				writeString("UPDATE OK", DISP_CLEAR);
+				delay(1000);
+				writeString("RESTARTING", DISP_CLEAR);
+			} else {
+				writeString("UPDATE FAILED", DISP_CLEAR);
+				Update.printError(Serial);
+			}
+			updateStarted = false;
+		}
+		
+	} else if (upload.status == UPLOAD_FILE_ABORTED) {
+		if (updateStarted) {
+			Update.end();
+			writeString("UPDATE ABORT", DISP_CLEAR);
+			updateStarted = false;
+		}
+	}
+}
+
+void handleUpdateComplete() {
+	// Send response after upload completes
+	server.sendHeader("Connection", "close");
+	
+	if (Update.hasError()) {
+		server.send(500, "text/html", 
+			"<html><body>"
+			"<h2>Update Failed!</h2>"
+			"<p>The firmware update failed. Device will continue running old firmware.</p>"
+			"<p>Error: " + String(Update.errorString()) + "</p>"
+			"<a href='/update'>Try Again</a> | <a href='/'>Home</a>"
+			"</body></html>"
+		);
+	} else {
+		server.send(200, "text/html", 
+			"<html><body>"
+			"<h2>Update Successful!</h2>"
+			"<p>Device will restart in 3 seconds...</p>"
+			"<p>You may need to reconnect to WiFi after restart.</p>"
+			"<script>setTimeout(function(){window.location='/'}, 5000);</script>"
+			"</body></html>"
+		);
+		delay(3000);
+		ESP.restart();
+	}
 }
 
 void showMessage(const char *sp);
@@ -1126,41 +1253,50 @@ void handleForm() {
 	//server.send(200, "text/html", htmlResponse);
 }
 
-bool waitConnect() {
-	static int prev_state = 0;
-	static uint32_t s = 0;
-	uint32_t c = millis();
-	if ((c-s) > 1000) {
-		int curr_state = portal.portalStatus();
-		if (curr_state != prev_state) {
-			if (curr_state & AutoConnect::AC_CAPTIVEPORTAL)
-				writeString(Config.apid.c_str(), DISP_CLEAR);
-			else
-				writeString(String(curr_state).c_str(), DISP_CLEAR);
-			prev_state = curr_state;
-		}//if
-		if (_settings.options&OPT_DEMO) {
-			return false;
-		}//if
-		s = c;
-	}//if
-	return true;
+// Callback for WiFiManager configuration mode
+void configModeCallback(WiFiManager *myWiFiManager) {
+	String apName = myWiFiManager->getConfigPortalSSID();
+	writeString(apName.c_str(), DISP_CLEAR);
 }
 
-String onRes(AutoConnectAux& aux, PageArgument& args) {
-	char buf[20];
-	strcpy(buf, args.arg("epoch").c_str());
-	buf[strlen(buf)-3] = '\0';
-	int epoch = atoi(buf);
-	sprintf(buf, "%12d", epoch);
-	writeString(buf, DISP_CLEAR|DISP_FORCE);
-	struct timeval n;
-	n.tv_sec = epoch;
-	n.tv_usec = 0;
-	settimeofday(&n, NULL);
-	_settings.options |= OPT_DEMO;
-	return String();
+// Setup WiFi using WiFiManager
+uint8_t setupWiFi() {
+	// Get chip ID for unique AP name
+	for (int i=0;i<17;i=i+8) _chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
+	String cid = String(_chip_id, HEX);
+	cid.toUpperCase();
+	String apName = "ESP-" + cid;
+	
+	// Debug output
+	// Configure WiFiManager
+	wifiManager.setAPStaticIPConfig(IPAddress(192,168,4,1), IPAddress(192,168,4,1), IPAddress(255,255,255,0));
+	wifiManager.setConfigPortalTimeout(300);  // 5 minutes timeout
+	wifiManager.setAPCallback(configModeCallback);
+	
+	// Try simpler password without special characters
+	// Some devices have issues with certain password formats
+	writeString("CONNECTING..", DISP_CLEAR);
+	
+	// Try to auto-connect first (will use saved credentials if available)
+	// If it fails, it will start config portal
+	// Testing with original password
+	// Start portal on demand if button pressed during WiFi setup
+	if (digitalRead(_BT2) == LOW) {
+		writeString("CONFIG MODE", DISP_CLEAR);
+		wifiManager.startConfigPortal(apName.c_str(), "12345678");
+	}
+	
+	if (!wifiManager.autoConnect(apName.c_str(), "12345678")) {
+		writeString("NO WIFI", DISP_CLEAR);
+		return 0;  // Return failure, don't block with another portal
+	}
+	
+	// Connected to WiFi
+	return 1;
 }
+
+// Demo functionality now handled through button1 handler
+// which sets _settings.options |= OPT_DEMO directly
 
 uint8_t setupWebServer() {
 	server.on("/", handleRoot);
@@ -1169,64 +1305,25 @@ uint8_t setupWebServer() {
 	server.on("/action_page", handleForm);
 	server.on("/button1", handleButton1);
 	server.on("/button2", handleButton2);
+	server.on("/wifireset", handleWiFiReset);
+	server.on("/configmode", handleConfigMode);  // Enter config portal without reset
+	server.on("/update", HTTP_GET, handleUpdateForm);  // Show update form
+	server.on("/update", HTTP_POST, handleUpdateComplete, handleUpdateUpload);  // Handle firmware upload
 	server.on("/favicon.ico", notFound);
 	server.on(UriRegex("/msg/(.+)"), HTTP_GET, handleMsg);		// example 192.168.2.xx/msg/hello_world
 	//server.onNotFound(notFound);
 	//portal.onNotFound(handleFix1);
 	//server.begin();
-	const char PAGE_DEMO[] PROGMEM = R"( {
-	  "uri": "/demo",
-	  "title": "Demo",
-	  "menu": true,
-	  "element": [
-		{
-		  "name": "epoch",
-		  "type": "ACInput",
-		  "label": "epoch",
-		  "apply": "number"
-		},
-		{
-		  "name": "run",
-		  "type": "ACSubmit",
-		  "value": "RUN",
-		  "uri": "/demo_on"
-		},
-		{
-		  "name": "js",
-		  "type": "ACElement",
-		  "value": "<script>document.getElementById('epoch').value = Date.now();</script>"
-		}
-	  ]
-	})";
-
-	const char PAGE_DEMO_ON[] PROGMEM = R"( {
-	  "uri": "/demo_on",
-	  "title": "Demo Clock On",
-	  "menu": false,
-	  "element": [
-		{
-		  "name": "content",
-		  "type": "ACText",
-		  "value": "Standalone run without WiFi setting."
-		}
-	  ]
-	})";
-
-	AutoConnectAux aDemo, aDemo_on;
-	aDemo.load(PAGE_DEMO);
-	aDemo_on.load(PAGE_DEMO_ON);
-	portal.join({aDemo, aDemo_on});
-	portal.on("/demo_on", onRes);
+	// AutoConnect demo pages removed - demo functionality now through regular web buttons
+	// Demo mode can be activated via /button1 endpoint
 
 	for (int i=0;i<17;i=i+8) _chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
 	String cid = String(_chip_id, HEX);
 	cid.toUpperCase();
 
-	Config.apid = "ESP-" + cid;
-	Config.psk = "12345678";
-	portal.config(Config);
-	portal.whileCaptivePortal(waitConnect);
-	return portal.begin();
+	// Start web server only (WiFi handled separately)
+	server.begin();
+	return 1;  // Web server always starts
 }
 
 
@@ -1577,6 +1674,8 @@ LEDBar _timeBar;
 
 //________________________________________________________________________________
 void setup() {
+	// Removed Serial.begin() to restore USB bootloader functionality
+	delay(2000);  // 2 second window for PlatformIO to trigger bootloader
 	
 	setupDisplay();
 	
@@ -1636,13 +1735,18 @@ void setup() {
 	clearAll();
 #ifdef USE_WIFI
 	if (!burn_in) {
-		writeString("CONNECTING..", DISP_CLEAR);
-		if (setupWebServer()) {
+		// Setup WiFi first using WiFiManager
+		if (setupWiFi()) {
+			// WiFi connected successfully
 			char buf[24];
 			sprintf(buf, "%s", WiFi.localIP().toString().c_str());
 			writeString(buf, DISP_CLEAR);
+			
+			// Setup web server after WiFi is ready
+			setupWebServer();
 		}//if
 		else {
+			// WiFi connection failed or timed out
 			_settings.options &= ~OPT_DEMO;
 			writeString("STANDALONE", DISP_CLEAR);
 			burn_in = 1;
@@ -1702,6 +1806,7 @@ void loop() {
 	static uint32_t stay_in_3_until = 0;
 	uint32_t current_time = millis();
 	uint8_t opt = 0;
+	
 
 	if (digitalRead(_BT2) == LOW) {
 		while (digitalRead(_BT2) == LOW) {			// wait for key release
@@ -1817,7 +1922,7 @@ void loop() {
 		}//else
 	}//if
 #ifdef USE_WIFI
-	portal.handleClient();
+	server.handleClient();  // Handle web server requests
 #endif
 	delay(1);			// suppose to save a lot of power
 	//
