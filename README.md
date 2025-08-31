@@ -1,6 +1,8 @@
 # S14Clock
 
-[Install v2.04 beta firmware, pick firmware beta](https://simpleavr.github.io/s14clock/install.html)
+[Install v2.04 firmware](https://simpleavr.github.io/s14clock/install.html)
+
+**2025-08-31** v2.04 Release - Add OTA (Over-The-Air) firmware update capability via web interface. Replace AutoConnect with WiFiManager library to fix Apple device captive portal compatibility (iPhone/iPad/Mac now work properly). Fix WiFi reset functionality through web interface. Display update progress percentage on clock during OTA updates. Remove problematic Serial.println() calls that caused crashes.
 
 **2025-01-05** Fix hardware version detection, V2-24 hardware detection was broken.
 

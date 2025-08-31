@@ -4,14 +4,14 @@
 // git clone https://github.com/simpleavr/s14clock.git
 // cd s14clock
 // (pio project init --board lolin_s2_mini) may need to
-// (pio lib install AutoConnect) may need to
+// (pio lib install WiFiManager) may need to
 // pio run --target upload
 // pio run -t nobuild -t upload
 //
 /*
  S14Clock is a bar shaped, web synchronized word clock featuring 24 or 12 characters, 14 segment display
  platformio is used to build
- relies on Arduino AutoConnect library by Hieromon
+ relies on WiFiManager library
  */
 // 2.01
 // c2303 add support for vertical numerics
@@ -56,13 +56,10 @@
 #include <uri/UriRegex.h>
 #include <time.h>
 #include <Update.h>  // For OTA firmware updates
-// #include <AutoConnect.h>  // Replaced with WiFiManager
 #include <WiFiManager.h>  // https://github.com/tzapu/WiFiManager
 
 #ifdef USE_WIFI
 WebServer 			server;
-// AutoConnect      	portal(server);  // Replaced with WiFiManager
-// AutoConnectConfig   Config;
 WiFiManager wifiManager;
 #endif
 
@@ -92,7 +89,7 @@ uint8_t _brightness = 3;
 
 //____ default hardware is v3-24 character version
 uint32_t _chip_id;
-char _version[14] = "FW2.03 HW3  ";
+char _version[14] = "FW2.04 HW3  ";
 uint8_t _num_of_digits = 24;
 uint8_t _enable_154 = 0;
 uint8_t _charlie = 12;
@@ -1012,7 +1009,6 @@ _version
 
 void handleButton1() {
 	_input = 0x01;
-	// portal.end();  // No longer needed with WiFiManager
 	writeString("DEMO", DISP_CLEAR);
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
@@ -1025,8 +1021,12 @@ void handleButton2() {
 }
 void handleWiFiReset() {
 	resetCredentials();
+	// Display message on clock
+	writeString("WIFI RESET", DISP_CLEAR);
+	delay(1500);
+	writeString("RESTARTING", DISP_CLEAR);
 	server.send(200, "text/html", "<html><body><h2>WiFi credentials cleared!</h2><p>Device will restart. Connect to AP 'ESP-XXXX' with password '12345678' to reconfigure.</p></body></html>");
-	delay(2000);
+	delay(1500);
 	ESP.restart();
 }
 void handleConfigMode() {
@@ -1185,9 +1185,14 @@ void handleMsg() {
 
 void handleReset() {
 	resetConfig();
+	saveConfig();
+	// Display message on clock
+	writeString("CONFIG RESET", DISP_CLEAR);
+	delay(2000);
+	writeString("SETTINGS DEFAULT", DISP_CLEAR);
+	delay(2000);
 	server.sendHeader("Location", "/");
 	server.send(302, "text/plain", "Updated - Press Back Button");
-	saveConfig();
 }
 
 void handleForm() {
@@ -1312,10 +1317,6 @@ uint8_t setupWebServer() {
 	server.on("/favicon.ico", notFound);
 	server.on(UriRegex("/msg/(.+)"), HTTP_GET, handleMsg);		// example 192.168.2.xx/msg/hello_world
 	//server.onNotFound(notFound);
-	//portal.onNotFound(handleFix1);
-	//server.begin();
-	// AutoConnect demo pages removed - demo functionality now through regular web buttons
-	// Demo mode can be activated via /button1 endpoint
 
 	for (int i=0;i<17;i=i+8) _chip_id |= ((ESP.getEfuseMac() >> (40 - i)) & 0xff) << i;
 	String cid = String(_chip_id, HEX);
