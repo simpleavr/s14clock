@@ -60,23 +60,26 @@ A countdown timer can also be activated via double tapping the button. Setup is 
 
 ### Technical Details
 
-- Employs Arduino ESP32 AutoConnect library for entering WIFI credentials.
+- Employs the WiFiManager library (captive portal) for entering WIFI credentials.
+- Firmware can be updated over WIFI (OTA) from the clock's own web page.
 - Full use of ESP32 S2 Mini IO pins to perform LED multiplexing and charlieplexing.
 - Access of IO registers directly and timer interrupts for efficient multiplexing.
 
 ### Initial Setup
 
-The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the ESP32 AutoConnect library. 
+The device must be connect to your home network in order to gain time server access via the internet. You will need to provide your home network name (SSID) and password via the setup portal the clock provides on first use.
 
-Power up your S14Clock, you should see the message "CONNECTING" after a brief display checkup. 
+Power up your S14Clock, you should see the message "CONNECTING.." after a brief display checkup. If no WIFI credentials are saved yet, the clock starts its own access point and shows its name (e.g. "ESP-1A2B3C") on the display.
 
  <img src="images/s14-24-12_04.JPG" alt="IMG" style="border:2px solid #555;margin-right:10px" width="360"/>
 
-Use your phone or computer and locate the AP with SSID "ESP-??????", connect with password "12345678".
+Use your phone or computer and locate the AP with SSID "ESP-??????" (the name shown on the display), connect with password "12345678".
 
-Choose from the "3-bar" menu (top right) "Configure new AP" and select your home network.
+The setup page should open by itself (captive portal). If it does not, browse to http://192.168.4.1.
 
-Enter your home network WIFI credentials and hit "Apply" button.
+Choose "Configure WiFi", select your home network from the list, enter its password and hit "Save".
+
+The setup portal stays open for 5 minutes. If nothing is saved in that time the clock shows "NO WIFI"; press the 'RST' button to try again.
 
  <img src="images/ap01.png" alt="IMG" style="border:2px solid #555;margin-right:10px" width="240"/> <img src="images/ap02.png" alt="IMG" style="border:2px solid #555;margin-right:10px" width="240"/> <img src="images/ap03.png" alt="IMG" style="border:2px solid #555;margin-right:10px" width="240"/>
 
