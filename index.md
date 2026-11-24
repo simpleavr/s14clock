@@ -155,7 +155,29 @@ During the show of versions, "FWx.xx HWxxx", press button 0 will force the clock
 
 Potential bug fixes and feature enhancements will be provided in [my github repository](https://github.com/simpleavr/s14clock). 
 
-You need a modern / recent browser that supports Web-Serial-API to use the [Firmware Installer](./install.html).
+There are two ways to update: over WIFI (OTA) from the clock's own web page, or over USB with the web installer.
+
+#### Over WIFI (OTA)
+
+OTA update is available on clocks running firmware 2.04 or later. Clocks with older firmware need a one-time update over USB first.
+
+1. Download the firmware file, [firmware_204.bin](./bin/firmware_204.bin), to your computer.
+2. Enter the clock's IP address in a browser (the clock shows it briefly at power up), then click **Firmware Update**. You can also go directly to `http://<clock-ip>/update`.
+3. Choose the downloaded `.bin` file and click **Update Firmware**.
+4. The clock shows "UPDATING" with a progress percentage, then "UPDATE OK" and restarts on its own. This takes 30 to 60 seconds. Do not disconnect power while it updates.
+
+Your settings and WIFI credentials are kept. If the update fails or is interrupted, the clock keeps running its old firmware and you can try again.
+
+Only upload the firmware file (`firmware_xxx.bin`). The bootloader and partition files are for the USB installer only.
+
+#### Over USB
+
+You need a modern / recent browser that supports Web-Serial-API (Chrome or Edge, not Firefox) to use the [Firmware Installer](./install.html).
+
+1. Put the S2 Mini in bootloader mode while connecting it to your computer: hold down button **0**, plug in the USB cable, then release button **0**.
+2. If the S2 Mini is already connected, you can instead hold down button **0**, press and release **RST**, then release button **0**.
+3. Open the [Firmware Installer](./install.html), pick the firmware version, click **Connect** and select the S2 Mini's serial port.
+4. When the install is done, press **RST** to start the clock.
 
 ### Components and Assembly
 
